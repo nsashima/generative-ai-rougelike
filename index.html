@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>サシマのシレン</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=Outfit:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="logo">
+        <span class="icon">🧭</span>
+        <h1>サシマのシレン</h1>
+      </div>
+      <div class="controls-top">
+        <button id="sound-toggle-btn" class="icon-btn" title="音声を切替 (M)">
+          <span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>
+        </button>
+        <button id="restart-btn" class="btn btn-secondary">リトライ <kbd class="key-hint">R</kbd></button>
+      </div>
+    </header>
+
+    <main class="game-container">
+      <!-- Left side: Viewport + Bottom Bar (Logs & Dpad) -->
+      <section class="game-viewport">
+        <div class="canvas-wrapper">
+          <canvas id="game-canvas"></canvas>
+          
+          <!-- Shop Modal Overlay -->
+          <div id="shop-modal" class="shop-modal hidden">
+            <div class="shop-content">
+              <div class="shop-header">
+                <h2>🏬 旅の商人</h2>
+                <button id="close-shop-btn" class="btn btn-secondary btn-sm">閉じる <kbd class="key-hint">Esc</kbd></button>
+              </div>
+              <p class="shop-welcome">「何を買う？ 何を売ってくれるんだい？」</p>
+              
+              <!-- Tab Switcher -->
+              <div class="shop-tabs">
+                <button id="shop-tab-buy" class="shop-tab active">📥 購入する <kbd class="key-hint">Tab</kbd></button>
+                <button id="shop-tab-sell" class="shop-tab">📤 売却する <kbd class="key-hint">Tab</kbd></button>
+              </div>
+
+              <div class="shop-player-gold">所持金: <span id="shop-gold-val" class="gold">0 G</span></div>
+              
+              <!-- Buy Panel -->
+              <div id="shop-buy-panel" class="shop-panel">
+                <ul id="shop-item-list" class="shop-item-list">
+                  <!-- Dynamically populated buy list -->
+                </ul>
+              </div>
+
+              <!-- Sell Panel -->
+              <div id="shop-sell-panel" class="shop-panel hidden">
+                <ul id="shop-sell-list" class="shop-sell-list">
+                  <!-- Dynamically populated sell list -->
+                </ul>
+              </div>
+
+              <!-- Keyboard Guide -->
+              <div class="shop-nav-guide">
+                <span>[▲/▼ (W/S)] 選択 | [Enter] 決定 | [Tab] 切替 | [Esc] 閉じる</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Start Overlay -->
+          <div id="start-overlay" class="game-overlay">
+            <div class="overlay-content start-theme">
+              <span class="overlay-icon">🧭</span>
+              <h1>サシマのシレン</h1>
+              <p class="overlay-subtitle">ダンジョンの最深部（地下5階）に眠る「生成AIの秘宝」を持ち帰れ！</p>
+              <button id="start-game-btn" class="btn btn-primary btn-lg">冒険を始める <kbd class="key-hint">Enter</kbd></button>
+            </div>
+          </div>
+
+          <!-- Game Over Overlay -->
+          <div id="gameover-overlay" class="game-overlay hidden">
+            <div class="overlay-content gameover-theme">
+              <span class="overlay-icon">💀</span>
+              <h1>GAME OVER</h1>
+              <p class="overlay-subtitle">勇者は力尽きてしまった...</p>
+              <div class="overlay-stats">
+                <div class="stat-row"><span>到達レベル:</span> <span id="go-level">Lvl 1</span></div>
+                <div class="stat-row"><span>到達階層:</span> <span id="go-floor">地下 1 階</span></div>
+                <div class="stat-row"><span>経過ターン:</span> <span id="go-turn">1 ターン</span></div>
+                <div class="stat-row"><span>獲得ゴールド:</span> <span id="go-gold">0 G</span></div>
+                <div class="stat-row final-score"><span>最終スコア:</span> <span id="go-score">0 点</span></div>
+              </div>
+              <button id="go-restart-btn" class="btn btn-danger btn-lg">もう一度挑戦する <kbd class="key-hint">Enter</kbd></button>
+            </div>
+          </div>
+
+          <!-- Victory Overlay -->
+          <div id="victory-overlay" class="game-overlay hidden">
+            <div class="overlay-content victory-theme">
+              <span class="overlay-icon">👑</span>
+              <h1>ダンジョンを踏破した！</h1>
+              <p class="overlay-subtitle">「生成AIの秘宝」を持ち帰ることに成功しました！</p>
+              <div class="overlay-stats">
+                <div class="stat-row"><span>プレイヤーレベル:</span> <span id="vic-level">Lvl 1</span></div>
+                <div class="stat-row"><span>獲得ゴールド:</span> <span id="vic-gold">0 G</span></div>
+                <div class="stat-row"><span>経過ターン数:</span> <span id="vic-turn">1 ターン</span></div>
+                <div class="stat-row score-formula">
+                  <div>計算式: (レベル × 1000) + (ゴールド × 10) - (ターン × 5)</div>
+                </div>
+                <div class="stat-row final-score"><span>最終スコア:</span> <span id="vic-score" class="gold">0 点</span></div>
+              </div>
+              <button id="vic-restart-btn" class="btn btn-primary btn-lg">もう一度遊ぶ <kbd class="key-hint">Enter</kbd></button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Bottom bar under canvas -->
+        <div class="bottom-bar">
+          <!-- Logs Panel -->
+          <div class="hud-card logs-card">
+            <h2>冒険の記録 (ログ)</h2>
+            <div id="log-feed" class="log-feed">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+          
+          <!-- On-screen directional pad for touch / mobile / ease of play -->
+          <div class="mobile-controls">
+            <div class="dpad">
+              <button id="ctrl-up" class="dpad-btn up" title="上">▲</button>
+              <button id="ctrl-left" class="dpad-btn left" title="左">◀</button>
+              <button id="ctrl-down" class="dpad-btn down" title="下">▼</button>
+              <button id="ctrl-right" class="dpad-btn right" title="右">▶</button>
+              <button id="ctrl-descend" class="dpad-btn action" title="階段を下りる">下りる (>)</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right side: Sidebar HUD -->
+      <section class="game-hud">
+        <!-- Status & Equipment Card -->
+        <div class="hud-card character-card">
+          <h2>ステータス & 装備</h2>
+          <div class="status-grid">
+            <div class="status-item">
+              <span class="label">階層</span>
+              <span id="stat-floor" class="value highlight">地下 1 階</span>
+            </div>
+            <div class="status-item">
+              <span class="label">所持金</span>
+              <span id="stat-gold" class="value gold">0 G</span>
+            </div>
+            <div class="status-item">
+              <span class="label">ターン</span>
+              <span id="stat-turn" class="value">1</span>
+            </div>
+            <div class="status-item">
+              <span class="label">レベル</span>
+              <span id="stat-level" class="value">1</span>
+            </div>
+          </div>
+
+          <!-- HP Bar -->
+          <div class="progress-bar-container">
+            <div class="progress-bar-header">
+              <span>HP</span>
+              <span id="hp-value">50 / 50</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="hp-bar-fill" class="progress-bar-fill hp" style="width: 100%"></div>
+            </div>
+          </div>
+
+          <!-- XP Bar -->
+          <div class="progress-bar-container">
+            <div class="progress-bar-header">
+              <span>XP</span>
+              <span id="xp-value">0 / 30</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="xp-bar-fill" class="progress-bar-fill xp" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="base-stats-row">
+            <div>攻撃力: <span id="stat-att" class="stat-number">8</span></div>
+            <div>防御力: <span id="stat-def" class="stat-number">2</span></div>
+          </div>
+
+          <!-- Equipment Slots inline -->
+          <div class="equipment-section">
+            <div class="equip-slot">
+              <span class="equip-label">武器 [ / ] :</span>
+              <span id="equip-weapon" class="equip-name empty">未装備</span>
+            </div>
+            <div class="equip-slot">
+              <span class="equip-label">防具 [ [ ] :</span>
+              <span id="equip-armor" class="equip-name empty">未装備</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inventory Card -->
+        <div class="hud-card inventory-card">
+          <div class="inventory-header">
+            <h2>インベントリ</h2>
+            <span id="inventory-count" class="count-badge">0 / 10</span>
+          </div>
+          <ul id="inventory-list" class="inventory-list">
+            <!-- Dynamically populated -->
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>操作: [WASD/矢印] 移動・攻撃 | [Space] 待機 | [&gt;] 階段下り | [1-0] 使用/装備 | [Shift+1-0] 置く | [M] 音声 | [R] リトライ</p>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

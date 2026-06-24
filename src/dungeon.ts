@@ -1,0 +1,470 @@
+import { Tile, Entity, EntityType, Item, ItemType } from './types';
+
+// Seeded or standard random utils
+function randomRange(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+interface Room {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export function generateDungeon(level: number, width: number, height: number): {
+  tiles: Tile[][];
+  playerStart: { x: number; y: number };
+  enemies: Entity[];
+  items: Item[];
+} {
+  // 1. Initialize grid with walls
+  const tiles: Tile[][] = [];
+  for (let x = 0; x < width; x++) {
+    tiles[x] = [];
+    for (let y = 0; y < height; y++) {
+      tiles[x][y] = {
+        x,
+        y,
+        type: 'wall',
+        explored: false,
+        visible: false
+      };
+    }
+  }
+
+  const rooms: Room[] = [];
+  const minRoomSize = 6;
+  const maxRoomSize = 15;
+  const targetRooms = randomRange(4, 6);
+
+  // 2. Generate rooms
+  for (let i = 0; i < 100; i++) {
+    if (rooms.length >= targetRooms) break;
+
+    const w = randomRange(minRoomSize, maxRoomSize);
+    const h = randomRange(minRoomSize, maxRoomSize);
+    const x = randomRange(1, width - w - 2);
+    const y = randomRange(1, height - h - 2);
+
+    const newRoom: Room = { x, y, w, h };
+
+    // Check overlap
+    let overlap = false;
+    for (const otherRoom of rooms) {
+      if (
+        newRoom.x < otherRoom.x + otherRoom.w &&
+        newRoom.x + newRoom.w > otherRoom.x &&
+        newRoom.y < otherRoom.y + otherRoom.h &&
+        newRoom.y + newRoom.h > otherRoom.y
+      ) {
+        overlap = true;
+        break;
+      }
+    }
+
+    if (!overlap) {
+      rooms.push(newRoom);
+      // Carve room
+      for (let rx = x; rx < x + w; rx++) {
+        for (let ry = y; ry < y + h; ry++) {
+          tiles[rx][ry].type = 'floor';
+        }
+      }
+    }
+  }
+
+  // 3. Connect rooms with corridors
+  for (let i = 1; i < rooms.length; i++) {
+    const prevRoom = rooms[i - 1];
+    const currRoom = rooms[i];
+
+    const prevCenterX = Math.floor(prevRoom.x + prevRoom.w / 2);
+    const prevCenterY = Math.floor(prevRoom.y + prevRoom.h / 2);
+    const currCenterX = Math.floor(currRoom.x + currRoom.w / 2);
+    const currCenterY = Math.floor(currRoom.y + currRoom.h / 2);
+
+    // Random choice: Horizontal then Vertical, or Vertical then Horizontal
+    if (Math.random() < 0.5) {
+      carveHorizontal(tiles, prevCenterX, currCenterX, prevCenterY);
+      carveVertical(tiles, prevCenterY, currCenterY, currCenterX);
+    } else {
+      carveVertical(tiles, prevCenterY, currCenterY, prevCenterX);
+      carveHorizontal(tiles, prevCenterX, currCenterX, currCenterY);
+    }
+  }
+
+  // Helper to generate unique ID
+  const uuid = () => Math.random().toString(36).substring(2, 9);
+
+  // 4. Place Player Start in the first room center
+  const firstRoom = rooms[0];
+  const playerStart = {
+    x: Math.floor(firstRoom.x + firstRoom.w / 2),
+    y: Math.floor(firstRoom.y + firstRoom.h / 2)
+  };
+
+  // 5. Place Stairs Down in the last room center (except on final level 5)
+  if (level < 5) {
+    const lastRoom = rooms[rooms.length - 1];
+    const stairsX = Math.floor(lastRoom.x + lastRoom.w / 2);
+    const stairsY = Math.floor(lastRoom.y + lastRoom.h / 2);
+    tiles[stairsX][stairsY].type = 'stairs';
+  }
+
+  // 6. Spawn Enemies and Items
+  const enemies: Entity[] = [];
+  const items: Item[] = [];
+
+  // Determine enemy spawns by dungeon level
+  const enemyTypesByLevel: { [key: number]: { type: EntityType; name: string; hp: number; att: number; def: number; xp: number; symbol: string; color: string }[] } = {
+    1: [
+      { type: 'slime', name: 'スライム', hp: 10, att: 4, def: 1, xp: 10, symbol: 's', color: '#22c55e' },
+      { type: 'goblin', name: 'ゴブリン', hp: 15, att: 6, def: 1, xp: 18, symbol: 'g', color: '#a3e635' }
+    ],
+    2: [
+      { type: 'slime', name: 'ポイズンスライム', hp: 16, att: 7, def: 2, xp: 15, symbol: 's', color: '#a855f7' },
+      { type: 'goblin', name: 'ゴブリン戦士', hp: 22, att: 9, def: 2, xp: 25, symbol: 'g', color: '#eab308' },
+      { type: 'skeleton', name: 'スケルトン', hp: 20, att: 11, def: 3, xp: 30, symbol: 't', color: '#cbd5e1' }
+    ],
+    3: [
+      { type: 'goblin', name: 'ホブゴブリン', hp: 30, att: 14, def: 3, xp: 45, symbol: 'h', color: '#ca8a04' },
+      { type: 'skeleton', name: 'スケルトン剣士', hp: 28, att: 16, def: 4, xp: 50, symbol: 'T', color: '#94a3b8' },
+      { type: 'golem', name: 'ストーンゴーレム', hp: 45, att: 18, def: 6, xp: 70, symbol: 'G', color: '#78716c' }
+    ],
+    4: [
+      { type: 'skeleton', name: 'デスナイト', hp: 45, att: 22, def: 5, xp: 90, symbol: 'K', color: '#475569' },
+      { type: 'golem', name: 'アイアンゴーレム', hp: 60, att: 24, def: 8, xp: 120, symbol: 'G', color: '#4b5563' }
+    ],
+    5: [
+      // Boss level has normal guards but the big target is the Dragon
+      { type: 'skeleton', name: 'デスナイト', hp: 45, att: 22, def: 5, xp: 90, symbol: 'K', color: '#475569' },
+      { type: 'golem', name: 'アイアンゴーレム', hp: 60, att: 24, def: 8, xp: 120, symbol: 'G', color: '#4b5563' }
+    ]
+  };
+
+  // Skip first room for enemies and items
+  for (let r = 1; r < rooms.length; r++) {
+    const room = rooms[r];
+
+    // Spawn enemies based on room area. (Larger rooms get more enemies)
+    // Area ranges from 36 (6x6) to 225 (15x15) tiles.
+    // We target roughly 1 enemy per 30 tiles, clamped between 1 and 5.
+    const roomArea = room.w * room.h;
+    const baseEnemies = Math.floor(roomArea / 30);
+    const enemyCount = Math.max(1, Math.min(5, baseEnemies + randomRange(0, 1)));
+    for (let e = 0; e < enemyCount; e++) {
+      // Pick random floor tile in room
+      const rx = randomRange(room.x, room.x + room.w - 1);
+      const ry = randomRange(room.y, room.y + room.h - 1);
+
+      // Check if already occupied
+      const occupied = enemies.some(enemy => enemy.x === rx && enemy.y === ry);
+      if (!occupied && (rx !== playerStart.x || ry !== playerStart.y)) {
+        const list = enemyTypesByLevel[Math.min(level, 5)];
+        const template = list[randomRange(0, list.length - 1)];
+
+        enemies.push({
+          id: uuid(),
+          x: rx,
+          y: ry,
+          type: template.type,
+          name: template.name,
+          hp: template.hp,
+          maxHp: template.hp,
+          att: template.att,
+          def: template.def,
+          xpValue: template.xp,
+          level: level,
+          symbol: template.symbol,
+          color: template.color
+        });
+      }
+    }
+
+    // Spawn items based on room area. (Clamp between 1 and 3 items per room)
+    const baseItems = Math.floor(roomArea / 60);
+    const itemCount = Math.max(1, Math.min(3, baseItems + randomRange(0, 1)));
+    for (let it = 0; it < itemCount; it++) {
+      const rx = randomRange(room.x, room.x + room.w - 1);
+      const ry = randomRange(room.y, room.y + room.h - 1);
+
+      const occupied = items.some(item => item.x === rx && item.y === ry);
+      if (!occupied) {
+        const itemTypeChance = Math.random();
+        let type: ItemType = 'gold';
+        let name = 'ゴールド';
+        let symbol = '$';
+        let color = '#fbbf24';
+        let value = randomRange(10, 25) * level; // slightly buffed gold value
+        let description = `${value}ゴールドが入っている。`;
+
+        if (itemTypeChance < 0.40) {
+          // Gold (default values already set)
+        } else if (itemTypeChance < 0.60) {
+          type = 'potion_heal';
+          name = '回復薬';
+          symbol = '!';
+          color = '#ef4444';
+          value = 40; // 40% healing
+          description = 'HPを最大値の40%回復する。';
+        } else if (itemTypeChance < 0.65) {
+          type = 'potion_strength';
+          name = '力増強の薬';
+          symbol = '!';
+          color = '#3b82f6';
+          value = 1; // permanent attack boost (+1)
+          description = '攻撃力を永久に 1 上昇させる。';
+        } else if (itemTypeChance < 0.75) {
+          type = 'weapon_sword';
+          name = level === 1 ? '錆びた剣' : level === 2 ? '鉄の剣' : level === 3 ? '鋼鉄の剣' : level === 4 ? 'ルーンブレード' : 'エクスカリバー';
+          symbol = '/';
+          color = '#a8a29e';
+          value = Math.floor(1 + level * 1.5); // weapon power
+          description = `攻撃力が ${value} 上がる武器。`;
+        } else if (itemTypeChance < 0.85) {
+          type = 'armor_shield';
+          name = level === 1 ? '古びた盾' : level === 2 ? '鉄の盾' : level === 3 ? '鋼鉄の盾' : level === 4 ? '騎士の盾' : 'イージスの盾';
+          symbol = '[';
+          color = '#60a5fa';
+          value = Math.floor(1 + level * 1.0); // armor power
+          description = `防御力が ${value} 上がる防具。`;
+        } else {
+          // scrolls
+          if (Math.random() < 0.5) {
+            type = 'scroll_teleport';
+            name = '瞬間移動の巻物';
+            symbol = '?';
+            color = '#a855f7';
+            value = 0;
+            description = 'ダンジョン内のランダムな位置にテレポートする。';
+          } else {
+            type = 'scroll_fireball';
+            name = '火炎球の巻物';
+            symbol = '?';
+            color = '#f97316';
+            value = 20 + level * 5; // nerfed fireball damage
+            description = `視界内の最も近い敵に${value}の火炎ダメージを与える。`;
+          }
+        }
+
+        items.push({
+          id: uuid(),
+          x: rx,
+          y: ry,
+          type,
+          name,
+          value,
+          description,
+          symbol,
+          color
+        });
+      }
+    }
+  }
+
+  // 6.5 Spawn Merchant (levels 2, 3, 4)
+  if (level >= 2 && level <= 4 && rooms.length > 2) {
+    const merchantRoom = rooms[Math.floor(rooms.length / 2)];
+    const merchantX = Math.floor(merchantRoom.x + merchantRoom.w / 2);
+    const merchantY = Math.floor(merchantRoom.y + merchantRoom.h / 2);
+
+    // Remove any items and normal enemies at that spot
+    const cleanIndexE = enemies.findIndex(e => e.x === merchantX && e.y === merchantY);
+    if (cleanIndexE !== -1) enemies.splice(cleanIndexE, 1);
+    const cleanIndexI = items.findIndex(i => i.x === merchantX && i.y === merchantY);
+    if (cleanIndexI !== -1) items.splice(cleanIndexI, 1);
+
+    enemies.push({
+      id: uuid(),
+      x: merchantX,
+      y: merchantY,
+      type: 'merchant',
+      name: '旅の商人',
+      hp: 999,
+      maxHp: 999,
+      att: 0,
+      def: 999,
+      xpValue: 0,
+      level,
+      symbol: 'M',
+      color: '#f472b6' // pink color
+    });
+  }
+
+  // 7. LEVEL 5 BOSS: Dragon spawn
+  if (level === 5) {
+    // Put Dragon in the middle of the last room
+    const lastRoom = rooms[rooms.length - 1];
+    const bossX = Math.floor(lastRoom.x + lastRoom.w / 2);
+    const bossY = Math.floor(lastRoom.y + lastRoom.h / 2);
+
+    // Remove any items and normal enemies at that spot
+    const cleanIndexE = enemies.findIndex(e => e.x === bossX && e.y === bossY);
+    if (cleanIndexE !== -1) enemies.splice(cleanIndexE, 1);
+    const cleanIndexI = items.findIndex(i => i.x === bossX && i.y === bossY);
+    if (cleanIndexI !== -1) items.splice(cleanIndexI, 1);
+
+    // Spawn Dragon
+    enemies.push({
+      id: uuid(),
+      x: bossX,
+      y: bossY,
+      type: 'dragon',
+      name: '邪竜アルドゥイン',
+      hp: 160,
+      maxHp: 160,
+      att: 32,
+      def: 10,
+      xpValue: 500,
+      level: 5,
+      symbol: 'D',
+      color: '#dc2626' // vivid red
+    });
+
+    // Also spawn a legendary item right behind the dragon or on its spot: "Legendary Amulet"
+    items.push({
+      id: uuid(),
+      x: bossX,
+      y: Math.max(1, bossY - 1),
+      type: 'gold', // acts as winning relic or special item
+      name: '生成AIの秘宝 (Amulet of Generative AI)',
+      symbol: '*',
+      color: '#f43f5e', // glowing pinkish-red
+      value: 9999,
+      description: 'このダンジョンの最深部に眠る究極のアーティファクト。手に入れると勝利する。'
+    });
+  }
+
+  // Guarantee at least one gold pile on each floor
+  const hasGold = items.some(item => item.type === 'gold');
+  if (!hasGold && rooms.length > 0) {
+    let placed = false;
+    for (let r = 0; r < rooms.length; r++) {
+      const room = rooms[r];
+      const gx = Math.floor(room.x + room.w / 2);
+      const gy = Math.floor(room.y + room.h / 2);
+      
+      const occupiedByEnemy = enemies.some(e => e.x === gx && e.y === gy);
+      const occupiedByItem = items.some(i => i.x === gx && i.y === gy);
+      const isPlayerStart = gx === playerStart.x && gy === playerStart.y;
+      
+      if (!occupiedByEnemy && !occupiedByItem && !isPlayerStart && tiles[gx]?.[gy]?.type === 'floor') {
+        const val = randomRange(10, 25) * level;
+        items.push({
+          id: uuid(),
+          x: gx,
+          y: gy,
+          type: 'gold',
+          name: 'ゴールド',
+          symbol: '$',
+          color: '#fbbf24',
+          value: val,
+          description: `${val}ゴールドが入っている。`
+        });
+        placed = true;
+        break;
+      }
+    }
+    // Fallback if center tile is blocked
+    if (!placed) {
+      for (const room of rooms) {
+        for (let rx = room.x; rx < room.x + room.w; rx++) {
+          for (let ry = room.y; ry < room.y + room.h; ry++) {
+            const occupied = items.some(i => i.x === rx && i.y === ry) || enemies.some(e => e.x === rx && e.y === ry) || (rx === playerStart.x && ry === playerStart.y);
+            if (!occupied && tiles[rx]?.[ry]?.type === 'floor') {
+              const val = randomRange(10, 25) * level;
+              items.push({
+                id: uuid(),
+                x: rx,
+                y: ry,
+                type: 'gold',
+                name: 'ゴールド',
+                symbol: '$',
+                color: '#fbbf24',
+                value: val,
+                description: `${val}ゴールドが入っている。`
+              });
+              placed = true;
+              break;
+            }
+          }
+          if (placed) break;
+        }
+        if (placed) break;
+      }
+    }
+  }
+
+  return {
+    tiles,
+    playerStart,
+    enemies,
+    items
+  };
+}
+
+function carveHorizontal(tiles: Tile[][], x1: number, x2: number, y: number) {
+  const start = Math.min(x1, x2);
+  const end = Math.max(x1, x2);
+  for (let x = start; x <= end; x++) {
+    tiles[x][y].type = 'floor';
+  }
+}
+
+function carveVertical(tiles: Tile[][], y1: number, y2: number, x: number) {
+  const start = Math.min(y1, y2);
+  const end = Math.max(y1, y2);
+  for (let y = start; y <= end; y++) {
+    tiles[x][y].type = 'floor';
+  }
+}
+
+// Simple Shadowcasting or Raycasting Field of View (FOV)
+// To keep it high-performance and lightweight, we can implement recursive shadowcasting or a simple raycasting algorithm
+export function computeFOV(playerX: number, playerY: number, tiles: Tile[][], range: number = 6) {
+  const width = tiles.length;
+  const height = tiles[0].length;
+
+  // Reset visibility
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      tiles[x][y].visible = false;
+    }
+  }
+
+  // Player position is always visible and explored
+  tiles[playerX][playerY].visible = true;
+  tiles[playerX][playerY].explored = true;
+
+  // Cast rays in all directions
+  const numRays = 72; // 360 degrees / 5
+  for (let i = 0; i < numRays; i++) {
+    const angle = (i * 2 * Math.PI) / numRays;
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+
+    let cx = playerX + 0.5;
+    let cy = playerY + 0.5;
+
+    for (let r = 0; r < range; r++) {
+      cx += dx;
+      cy += dy;
+
+      const tx = Math.floor(cx);
+      const ty = Math.floor(cy);
+
+      if (tx < 0 || tx >= width || ty < 0 || ty >= height) {
+        break;
+      }
+
+      tiles[tx][ty].visible = true;
+      tiles[tx][ty].explored = true;
+
+      // Wall blocks light
+      if (tiles[tx][ty].type === 'wall') {
+        break;
+      }
+    }
+  }
+}

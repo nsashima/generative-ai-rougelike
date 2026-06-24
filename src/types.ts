@@ -1,0 +1,80 @@
+export type TileType = 'wall' | 'floor' | 'stairs';
+
+export interface Tile {
+  x: number;
+  y: number;
+  type: TileType;
+  explored: boolean;
+  visible: boolean;
+}
+
+export type ItemType = 
+  | 'potion_heal' 
+  | 'potion_strength' 
+  | 'weapon_sword' 
+  | 'armor_shield' 
+  | 'scroll_teleport' 
+  | 'scroll_fireball' 
+  | 'gold';
+
+export interface Item {
+  id: string;
+  x: number;
+  y: number;
+  type: ItemType;
+  name: string;
+  value: number;
+  description: string;
+  symbol: string;
+  color: string;
+}
+
+export type EntityType = 'player' | 'slime' | 'goblin' | 'skeleton' | 'golem' | 'dragon' | 'merchant';
+
+export interface Entity {
+  id: string;
+  x: number;
+  y: number;
+  type: EntityType;
+  name: string;
+  hp: number;
+  maxHp: number;
+  att: number;
+  def: number;
+  xpValue: number; // XP given to player when killed
+  level: number;
+  xp?: number; // Player only
+  maxXp?: number; // Player only
+  symbol: string;
+  color: string;
+}
+
+export interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  color: string;
+  size: number;
+  text?: string; // Floating text (e.g., damage numbers)
+}
+
+export type GameStatus = 'start' | 'playing' | 'gameover' | 'victory' | 'shop';
+
+export interface GameState {
+  dungeonLevel: number;
+  tiles: Tile[][];
+  width: number;
+  height: number;
+  player: Entity;
+  enemies: Entity[];
+  items: Item[];
+  messages: string[];
+  status: GameStatus;
+  particles: Particle[];
+  inventory: Item[];
+  gold: number;
+  turn: number;
+}
