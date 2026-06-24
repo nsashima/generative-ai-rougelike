@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "npx serve -s dist"
   },
   "devDependencies": {
     "typescript": "^5.2.2",
