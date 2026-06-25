@@ -206,10 +206,17 @@ export class GameEngine {
       }
     }
 
-    // Give Gold (Reduced to balance starting economy)
-    const goldGained = (enemy.type === 'dragon' || enemy.type === 'demon_king')
-      ? Math.floor(60 + Math.random() * 30) // Was 100-150 G
-      : Math.floor((enemy.xpValue * 0.08) + Math.random() * (enemy.xpValue * 0.08) + 1); // Was 0.15 * xp
+    // Give Gold (Adjusted to allow reasonable shopping while maintaining balance)
+    let goldGained = 0;
+    if (enemy.type === 'dragon' || enemy.type === 'demon_king') {
+      goldGained = Math.floor(80 + Math.random() * 40); // Boss: 80-120 G
+    } else if (enemy.type === 'golden_slime') {
+      goldGained = Math.floor(35 + enemy.level * 5 + Math.random() * 15); // Golden Slime:相当多め (e.g. Level 1: 40-55 G)
+    } else if (enemy.type === 'silver_slime') {
+      goldGained = Math.floor(2 + enemy.level * 0.5 + Math.random() * 3); // Silver Slime: 経験値は多いがゴールドは少なめ
+    } else {
+      goldGained = Math.floor((enemy.xpValue * 0.11) + Math.random() * (enemy.xpValue * 0.11) + 1);
+    }
     
     this.state.gold += goldGained;
     this.addMessage(`${goldGained} ゴールドを獲得した。`);
@@ -690,18 +697,78 @@ export class GameEngine {
         break;
       }
 
-      case 'scroll_mapping': {
-        for (let x = 0; x < this.state.width; x++) {
-          for (let y = 0; y < this.state.height; y++) {
-            if (this.state.tiles[x]?.[y]) {
-              this.state.tiles[x][y].explored = true;
-            }
+      case 'scroll_repair': {
+        const weapon = this.equippedWeapon;
+        const armor = this.equippedArmor;
+        if (!weapon && !armor) {
+          this.addMessage('装備している武器や防具がない！');
+          return;
+        }
+        
+        let repaired = false;
+        if (weapon && weapon.durability !== undefined && weapon.maxDurability !== undefined) {
+          if (weapon.durability < weapon.maxDurability) {
+            weapon.durability = Math.min(weapon.maxDurability, weapon.durability + item.value);
+            repaired = true;
           }
         }
-        this.addMessage('千里眼の巻物を読んだ。フロアの全貌が頭の中に浮かび上がった！');
-        this.spawnParticle(player.x, player.y, '#10b981', 15, 'MAPPING');
-        soundEffects.playStairs();
-        this.state.inventory.splice(index, 1);
+        if (armor && armor.durability !== undefined && armor.maxDurability !== undefined) {
+          if (armor.durability < armor.maxDurability) {
+            armor.durability = Math.min(armor.maxDurability, armor.durability + item.value);
+            repaired = true;
+          }
+        }
+        
+        if (repaired) {
+          this.addMessage('修復の巻物を読んだ。装備の耐久値が回復した！');
+          soundEffects.playGold();
+          this.spawnParticle(player.x, player.y, '#22c55e', 15, 'REPAIR');
+          this.state.inventory.splice(index, 1);
+        } else {
+          this.addMessage('装備の耐久値はすでに最大だ！');
+          return;
+        }
+        break;
+      }
+
+      case 'scroll_drain': {
+        const targets: Entity[] = [];
+        for (const enemy of this.state.enemies) {
+          if (enemy.type === 'merchant') continue;
+          const tile = this.state.tiles[enemy.x]?.[enemy.y];
+          if (tile && tile.visible) {
+            targets.push(enemy);
+          }
+        }
+        if (targets.length > 0) {
+          const drainDmg = item.value;
+          let totalDrained = 0;
+          this.addMessage(`吸血の巻物を唱えた！視界の敵 ${targets.length} 体から生命力を吸い取る！`);
+          soundEffects.playFireball();
+          this.state.inventory.splice(index, 1);
+
+          for (const enemy of targets) {
+            const actualDamage = Math.min(enemy.hp, drainDmg);
+            enemy.hp -= drainDmg;
+            totalDrained += actualDamage;
+            
+            this.spawnParticle(enemy.x + (enemy.width || 1)/2, enemy.y + (enemy.height || 1)/2, '#f43f5e', 15, `-${drainDmg} (吸血)`);
+            if (enemy.hp <= 0) {
+              this.defeatEnemy(enemy);
+            }
+          }
+          
+          if (totalDrained > 0 && player.hp < player.maxHp) {
+            const healAmt = Math.min(player.maxHp - player.hp, totalDrained);
+            player.hp += healAmt;
+            this.addMessage(`敵から HP を ${healAmt} 吸収した。`);
+            this.spawnParticle(player.x, player.y, '#ec4899', 15, `+${healAmt} HP`);
+            soundEffects.playHeal();
+          }
+        } else {
+          this.addMessage('視界内に生命力を吸い取れる敵がいない！');
+          return;
+        }
         break;
       }
     }
@@ -734,6 +801,19 @@ export class GameEngine {
     // Remove from inventory
     this.state.inventory.splice(index, 1);
     this.addMessage(`${item.name} を足元に置いた。`);
+    soundEffects.playGold();
+  }
+
+  // Swap two inventory items for sorting
+  swapInventoryItems(index1: number, index2: number) {
+    if (index1 < 0 || index1 >= this.state.inventory.length) return;
+    if (index2 < 0 || index2 >= this.state.inventory.length) return;
+    if (index1 === index2) return;
+
+    const temp = this.state.inventory[index1];
+    this.state.inventory[index1] = this.state.inventory[index2];
+    this.state.inventory[index2] = temp;
+    
     soundEffects.playGold();
   }
 
@@ -854,14 +934,25 @@ export class GameEngine {
         stock: 1
       },
       {
-        id: 'shop_scroll_mapping',
-        name: '千里眼の巻物',
-        price: 50, // Increased price
-        description: 'フロア全体のマップを明らかにする。',
-        type: 'scroll_mapping',
+        id: 'shop_scroll_repair',
+        name: '修復の巻物',
+        price: 60,
+        description: '装備している武器と防具の耐久値を 15 回復する。',
+        type: 'scroll_repair',
         symbol: '?',
-        color: '#10b981',
-        value: 0,
+        color: '#22c55e',
+        value: 15,
+        stock: 1
+      },
+      {
+        id: 'shop_scroll_drain',
+        name: '吸血の巻物',
+        price: 80,
+        description: `視界内の敵全員から生命力を ${10 + level * 2} 吸収し回復。`,
+        type: 'scroll_drain',
+        symbol: '?',
+        color: '#ec4899',
+        value: 10 + level * 2,
         stock: 1
       },
       {
@@ -956,8 +1047,10 @@ export class GameEngine {
         return 25;
       case 'scroll_thunder':
         return 35;
-      case 'scroll_mapping':
-        return 20;
+      case 'scroll_repair':
+        return 30;
+      case 'scroll_drain':
+        return 40;
       case 'weapon_sword':
         return item.value * 8;
       case 'armor_shield':

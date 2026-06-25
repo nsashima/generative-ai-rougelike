@@ -17,7 +17,8 @@ export type ItemType =
   | 'scroll_fireball' 
   | 'scroll_sleep'
   | 'scroll_thunder'
-  | 'scroll_mapping'
+  | 'scroll_repair'
+  | 'scroll_drain'
   | 'gold';
 
 export interface Item {
@@ -34,7 +35,7 @@ export interface Item {
   maxDurability?: number;
 }
 
-export type EntityType = 'player' | 'slime' | 'goblin' | 'skeleton' | 'golem' | 'dragon' | 'merchant' | 'hellhound' | 'vampire' | 'demon' | 'archdemon' | 'demon_king';
+export type EntityType = 'player' | 'slime' | 'golden_slime' | 'silver_slime' | 'goblin' | 'skeleton' | 'golem' | 'dragon' | 'merchant' | 'hellhound' | 'vampire' | 'demon' | 'archdemon' | 'demon_king';
 
 export interface Entity {
   id: string;

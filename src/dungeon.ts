@@ -217,7 +217,7 @@ export function generateDungeon(level: number, width: number, height: number): {
         let name = 'ゴールド';
         let symbol = '$';
         let color = '#fbbf24';
-        let value = randomRange(3, 8) * level; // reduced gold value to balance economy
+        let value = randomRange(4, 11) * level; // adjusted gold value to balance economy
         let description = `${value}ゴールドが入っている。`;
         let itemDurability: number | undefined = undefined;
 
@@ -306,41 +306,48 @@ export function generateDungeon(level: number, width: number, height: number): {
         } else {
           // scrolls
           const scrollChance = Math.random();
-          if (scrollChance < 0.22) {
+          if (scrollChance < 0.17) {
             type = 'scroll_teleport';
             name = '瞬間移動の巻物';
             symbol = '?';
             color = '#a855f7';
             value = 0;
             description = 'ダンジョン内のランダムな位置にテレポートする。';
-          } else if (scrollChance < 0.44) {
+          } else if (scrollChance < 0.34) {
             type = 'scroll_fireball';
             name = '火炎球の巻物';
             symbol = '?';
             color = '#f97316';
             value = 20 + level * 5;
             description = `視界内の最も近い敵に${value}の火炎ダメージを与える。`;
-          } else if (scrollChance < 0.64) {
+          } else if (scrollChance < 0.50) {
             type = 'scroll_sleep';
             name = '眠りの巻物';
             symbol = '?';
             color = '#38bdf8';
             value = 0;
             description = '部屋や通路にいる周囲の敵を眠らせて数ターンの間行動不能にする。';
-          } else if (scrollChance < 0.84) {
+          } else if (scrollChance < 0.67) {
             type = 'scroll_thunder';
             name = '雷光の巻物';
             symbol = '?';
             color = '#eab308';
             value = 15 + level * 3;
             description = `視界内のすべての敵に${value}の雷ダメージを与える。`;
-          } else {
-            type = 'scroll_mapping';
-            name = '千里眼の巻物';
+          } else if (scrollChance < 0.84) {
+            type = 'scroll_repair';
+            name = '修復の巻物';
             symbol = '?';
-            color = '#10b981';
-            value = 0;
-            description = 'フロア全体のマップを明らかにする。';
+            color = '#22c55e';
+            value = 15; // amount to repair
+            description = '装備している武器と防具の耐久値を 15 回復する。';
+          } else {
+            type = 'scroll_drain';
+            name = '吸血の巻物';
+            symbol = '?';
+            color = '#ec4899';
+            value = 10 + level * 2; // drain damage
+            description = `視界内のすべての敵からHPを${value}吸収し、自身のHPを回復する。`;
           }
         }
 
@@ -535,6 +542,58 @@ export function generateDungeon(level: number, width: number, height: number): {
         }
         if (placed) break;
       }
+    }
+  }
+
+  // Rare monster spawn (5% Golden Slime, 5% Silver Slime, max 1 per floor)
+  const rareRoll = Math.random();
+  if (rareRoll < 0.10) {
+    const isGold = rareRoll < 0.05;
+    const rareType: EntityType = isGold ? 'golden_slime' : 'silver_slime';
+    const rareName = isGold ? 'ゴールデンスライム' : 'シルバースライム';
+    const rareColor = isGold ? '#facc15' : '#cbd5e1'; // Gold and Silver/Slate colors
+    
+    // Stats: Low HP and Attack so they are easy to defeat bonus targets.
+    // Golden Slime has low defense, Silver Slime has slightly higher defense but very low HP.
+    const rareHp = isGold ? (6 + level * 2) : (4 + level * 1);
+    const rareAtt = 1 + Math.floor(level * 0.5);
+    const rareDef = isGold ? (1 + Math.floor(level * 0.5)) : (2 + level * 1);
+    const rareXp = isGold ? (15 + level * 5) : (100 + level * 50); // Keep the high XP reward
+
+    // Find a free spot on floor
+    const floorTiles: { x: number; y: number }[] = [];
+    const mapWidth = tiles.length;
+    const mapHeight = tiles[0].length;
+    for (let x = 0; x < mapWidth; x++) {
+      for (let y = 0; y < mapHeight; y++) {
+        if (tiles[x][y].type === 'floor') {
+          const isPlayerStart = x === playerStart.x && y === playerStart.y;
+          const hasEnemy = enemies.some(e => e.x === x && e.y === y);
+          const hasItem = items.some(i => i.x === x && i.y === y);
+          if (!isPlayerStart && !hasEnemy && !hasItem) {
+            floorTiles.push({ x, y });
+          }
+        }
+      }
+    }
+    
+    if (floorTiles.length > 0) {
+      const spot = floorTiles[randomRange(0, floorTiles.length - 1)];
+      enemies.push({
+        id: uuid(),
+        x: spot.x,
+        y: spot.y,
+        type: rareType,
+        name: rareName,
+        hp: rareHp,
+        maxHp: rareHp,
+        att: rareAtt,
+        def: rareDef,
+        xpValue: rareXp,
+        level,
+        symbol: 's',
+        color: rareColor
+      });
     }
   }
 

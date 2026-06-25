@@ -359,8 +359,9 @@ export class DungeonRenderer {
       item.type === 'scroll_teleport' || 
       item.type === 'scroll_fireball' || 
       item.type === 'scroll_sleep' || 
-      item.type === 'scroll_thunder' || 
-      item.type === 'scroll_mapping'
+      item.type === 'scroll_thunder' ||
+      item.type === 'scroll_repair' ||
+      item.type === 'scroll_drain'
     ) {
       sprite = [
         [0,0,0,0,0,0,0,0,0,0,0,0],
@@ -381,7 +382,8 @@ export class DungeonRenderer {
         'scroll_fireball': { mark: '#f97316', ribbon: '#ef4444' },
         'scroll_sleep': { mark: '#38bdf8', ribbon: '#0ea5e9' },
         'scroll_thunder': { mark: '#facc15', ribbon: '#eab308' },
-        'scroll_mapping': { mark: '#10b981', ribbon: '#047857' }
+        'scroll_repair': { mark: '#4ade80', ribbon: '#16a34a' },
+        'scroll_drain': { mark: '#f472b6', ribbon: '#db2777' }
       };
       const config = scrollColors[item.type] || { mark: '#8b5cf6', ribbon: '#3b82f6' };
       colors = {
@@ -464,9 +466,11 @@ export class DungeonRenderer {
     const ew = enemy.width || 1;
     const eh = enemy.height || 1;
 
+    const isSlime = enemy.type === 'slime' || enemy.type === 'golden_slime' || enemy.type === 'silver_slime';
+
     // Animated breathing/bouncing size based on type
     let breath = 0;
-    if (enemy.type === 'slime') {
+    if (isSlime) {
       breath = Math.floor(Math.sin(this.pulseTime * 8) * 2);
     } else {
       breath = Math.floor(Math.sin(this.pulseTime * 4.5) * 1);
@@ -495,7 +499,7 @@ export class DungeonRenderer {
     let sprite: number[][] | null = null;
     let colors: { [key: number]: string } = {};
 
-    if (enemy.type === 'slime') {
+    if (isSlime) {
       sprite = [
         [0,0,0,0,0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0],
@@ -756,8 +760,8 @@ export class DungeonRenderer {
 
     if (sprite) {
       const pixelSize = 3;
-      const slimeYOffset = (enemy.type === 'slime') ? breath : 0;
-      const yBob = (enemy.type !== 'slime') ? breath : 0;
+      const slimeYOffset = isSlime ? breath : 0;
+      const yBob = !isSlime ? breath : 0;
       const sizeLimit = (enemy.type === 'dragon' || enemy.type === 'demon_king') ? 24 : 12;
 
       const startX = screenX + (this.tileSize * ew - pixelSize * sizeLimit) / 2;
@@ -769,7 +773,7 @@ export class DungeonRenderer {
           if (val !== 0) {
             this.ctx.fillStyle = colors[val];
             let rh = pixelSize;
-            if (enemy.type === 'slime' && breath > 0) {
+            if (isSlime && breath > 0) {
               rh = pixelSize - 0.3; // slightly squash slime on breath down
             }
             this.ctx.fillRect(startX + c * pixelSize, startY + r * rh, pixelSize, rh);
