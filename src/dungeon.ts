@@ -306,41 +306,48 @@ export function generateDungeon(level: number, width: number, height: number): {
         } else {
           // scrolls
           const scrollChance = Math.random();
-          if (scrollChance < 0.22) {
+          if (scrollChance < 0.17) {
             type = 'scroll_teleport';
             name = '瞬間移動の巻物';
             symbol = '?';
             color = '#a855f7';
             value = 0;
             description = 'ダンジョン内のランダムな位置にテレポートする。';
-          } else if (scrollChance < 0.44) {
+          } else if (scrollChance < 0.34) {
             type = 'scroll_fireball';
             name = '火炎球の巻物';
             symbol = '?';
             color = '#f97316';
             value = 20 + level * 5;
             description = `視界内の最も近い敵に${value}の火炎ダメージを与える。`;
-          } else if (scrollChance < 0.64) {
+          } else if (scrollChance < 0.50) {
             type = 'scroll_sleep';
             name = '眠りの巻物';
             symbol = '?';
             color = '#38bdf8';
             value = 0;
             description = '部屋や通路にいる周囲の敵を眠らせて数ターンの間行動不能にする。';
-          } else if (scrollChance < 0.84) {
+          } else if (scrollChance < 0.67) {
             type = 'scroll_thunder';
             name = '雷光の巻物';
             symbol = '?';
             color = '#eab308';
             value = 15 + level * 3;
             description = `視界内のすべての敵に${value}の雷ダメージを与える。`;
-          } else {
-            type = 'scroll_mapping';
-            name = '千里眼の巻物';
+          } else if (scrollChance < 0.84) {
+            type = 'scroll_repair';
+            name = '修復の巻物';
             symbol = '?';
-            color = '#10b981';
-            value = 0;
-            description = 'フロア全体のマップを明らかにする。';
+            color = '#22c55e';
+            value = 15; // amount to repair
+            description = '装備している武器と防具の耐久値を 15 回復する。';
+          } else {
+            type = 'scroll_drain';
+            name = '吸血の巻物';
+            symbol = '?';
+            color = '#ec4899';
+            value = 10 + level * 2; // drain damage
+            description = `視界内のすべての敵からHPを${value}吸収し、自身のHPを回復する。`;
           }
         }
 

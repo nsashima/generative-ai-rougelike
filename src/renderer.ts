@@ -359,8 +359,9 @@ export class DungeonRenderer {
       item.type === 'scroll_teleport' || 
       item.type === 'scroll_fireball' || 
       item.type === 'scroll_sleep' || 
-      item.type === 'scroll_thunder' || 
-      item.type === 'scroll_mapping'
+      item.type === 'scroll_thunder' ||
+      item.type === 'scroll_repair' ||
+      item.type === 'scroll_drain'
     ) {
       sprite = [
         [0,0,0,0,0,0,0,0,0,0,0,0],
@@ -381,7 +382,8 @@ export class DungeonRenderer {
         'scroll_fireball': { mark: '#f97316', ribbon: '#ef4444' },
         'scroll_sleep': { mark: '#38bdf8', ribbon: '#0ea5e9' },
         'scroll_thunder': { mark: '#facc15', ribbon: '#eab308' },
-        'scroll_mapping': { mark: '#10b981', ribbon: '#047857' }
+        'scroll_repair': { mark: '#4ade80', ribbon: '#16a34a' },
+        'scroll_drain': { mark: '#f472b6', ribbon: '#db2777' }
       };
       const config = scrollColors[item.type] || { mark: '#8b5cf6', ribbon: '#3b82f6' };
       colors = {
