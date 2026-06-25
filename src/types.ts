@@ -15,6 +15,9 @@ export type ItemType =
   | 'armor_shield' 
   | 'scroll_teleport' 
   | 'scroll_fireball' 
+  | 'scroll_sleep'
+  | 'scroll_thunder'
+  | 'scroll_mapping'
   | 'gold';
 
 export interface Item {
@@ -29,7 +32,7 @@ export interface Item {
   color: string;
 }
 
-export type EntityType = 'player' | 'slime' | 'goblin' | 'skeleton' | 'golem' | 'dragon' | 'merchant';
+export type EntityType = 'player' | 'slime' | 'goblin' | 'skeleton' | 'golem' | 'dragon' | 'merchant' | 'hellhound' | 'vampire' | 'demon' | 'archdemon' | 'demon_king';
 
 export interface Entity {
   id: string;
@@ -47,6 +50,9 @@ export interface Entity {
   maxXp?: number; // Player only
   symbol: string;
   color: string;
+  width?: number;
+  height?: number;
+  stunTurns?: number;
 }
 
 export interface Particle {

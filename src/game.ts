@@ -2,8 +2,8 @@ import { GameState, Entity, Item } from './types';
 import { generateDungeon, computeFOV } from './dungeon';
 import { soundEffects } from './sound';
 
-const DUNGEON_WIDTH = 40;
-const DUNGEON_HEIGHT = 25;
+const DUNGEON_WIDTH = 45;
+const DUNGEON_HEIGHT = 30;
 
 export class GameEngine {
   public state!: GameState;
@@ -11,6 +11,7 @@ export class GameEngine {
   // Track equipped items
   public equippedWeapon: Item | null = null;
   public equippedArmor: Item | null = null;
+  public debugAllVisible: boolean = false;
 
   constructor() {
     this.reset();
@@ -37,6 +38,7 @@ export class GameEngine {
 
     this.equippedWeapon = null;
     this.equippedArmor = null;
+    this.debugAllVisible = false;
 
     this.state = {
       dungeonLevel: 1,
@@ -53,6 +55,17 @@ export class GameEngine {
       gold: 0,
       turn: 1
     };
+  }
+
+  revealAllMap() {
+    for (let x = 0; x < this.state.width; x++) {
+      for (let y = 0; y < this.state.height; y++) {
+        if (this.state.tiles[x]?.[y]) {
+          this.state.tiles[x][y].explored = true;
+          this.state.tiles[x][y].visible = true;
+        }
+      }
+    }
   }
 
   startGame() {
@@ -75,11 +88,19 @@ export class GameEngine {
     this.state.player.y = dungeon.playerStart.y;
 
     // Reset visible tiles
-    computeFOV(this.state.player.x, this.state.player.y, this.state.tiles);
+    if (this.debugAllVisible) {
+      this.revealAllMap();
+    } else {
+      computeFOV(this.state.player.x, this.state.player.y, this.state.tiles);
+    }
 
     this.addMessage(`地下 ${level} 階に到達した。`);
     if (level === 5) {
-      this.addMessage('【警告】この階層には恐ろしい邪竜が潜んでいる！気をつけて進め！');
+      this.addMessage('【警告】この階層には恐ろしいゴブリンキングが潜んでいる！気をつけて進め！');
+      this.addMessage('※ゴブリンキングを倒すまで、次の階層への階段は出現しない！');
+    }
+    if (level === 10) {
+      this.addMessage('【警告】この階層には深淵なる「邪教の心眼」が潜んでいる！死闘に備えよ！');
     }
   }
 
@@ -170,10 +191,30 @@ export class GameEngine {
       }
     }
 
-    // Check if the defeated enemy is the Dragon (Boss)
+    // Give Gold (Reduced to balance starting economy)
+    const goldGained = (enemy.type === 'dragon' || enemy.type === 'demon_king')
+      ? Math.floor(100 + Math.random() * 50) 
+      : Math.floor((enemy.xpValue * 0.15) + Math.random() * (enemy.xpValue * 0.15) + 1);
+    
+    this.state.gold += goldGained;
+    this.addMessage(`${goldGained} ゴールドを獲得した。`);
+    this.spawnParticle(enemy.x, enemy.y, '#eab308', 8, `+${goldGained} G`);
+    soundEffects.playGold();
+
+    // Check if the defeated enemy is a Boss
     if (enemy.type === 'dragon') {
-      this.addMessage('邪竜アルドゥインを討伐した！伝説の秘宝を手に入れろ！');
-      this.spawnParticle(enemy.x, enemy.y, '#fbbf24', 30, 'ドラゴン討伐！');
+      this.addMessage('ゴブリンキングを討伐した！');
+      this.spawnParticle(enemy.x, enemy.y, '#fbbf24', 30, 'キング討伐！');
+      // Spawn stairs
+      this.state.tiles[enemy.x][enemy.y].type = 'stairs';
+      this.addMessage('ゴブリンキングが倒れ、下り階段が現れた！');
+      soundEffects.playStairs();
+    } else if (enemy.type === 'demon_king') {
+      this.state.gold += 9999; // Add relic value to final gold/score
+      this.addMessage('「邪教の心眼」を討伐した！「生成AIの秘宝」を取り戻し、ダンジョンを完全に支配した！');
+      this.spawnParticle(enemy.x, enemy.y, '#f43f5e', 45, 'VICTORY!');
+      this.state.status = 'victory';
+      soundEffects.playLevelUp();
     }
   }
 
@@ -196,16 +237,91 @@ export class GameEngine {
     soundEffects.playLevelUp();
   }
 
+  canEnemyMoveTo(enemy: Entity, targetX: number, targetY: number): boolean {
+    const w = enemy.width || 1;
+    const h = enemy.height || 1;
+    const player = this.state.player;
+
+    for (let dx = 0; dx < w; dx++) {
+      for (let dy = 0; dy < h; dy++) {
+        const tx = targetX + dx;
+        const ty = targetY + dy;
+
+        // Check bounds
+        if (tx < 0 || tx >= this.state.width || ty < 0 || ty >= this.state.height) {
+          return false;
+        }
+
+        // Check wall
+        if (this.state.tiles[tx][ty].type === 'wall') {
+          return false;
+        }
+
+        // Check player collision
+        if (tx === player.x && ty === player.y) {
+          return false;
+        }
+
+        // Check other enemies collision (excluding self)
+        const occupiedByOther = this.state.enemies.some(e => {
+          if (e.id === enemy.id) return false;
+          const ew = e.width || 1;
+          const eh = e.height || 1;
+          return tx >= e.x && tx < e.x + ew && ty >= e.y && ty < e.y + eh;
+        });
+        if (occupiedByOther) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  isAdjacentToPlayer(enemy: Entity): boolean {
+    const w = enemy.width || 1;
+    const h = enemy.height || 1;
+    const player = this.state.player;
+
+    for (let dx = 0; dx < w; dx++) {
+      for (let dy = 0; dy < h; dy++) {
+        const tx = enemy.x + dx;
+        const ty = enemy.y + dy;
+        const dist = Math.max(Math.abs(tx - player.x), Math.abs(ty - player.y));
+        if (dist === 1) return true;
+      }
+    }
+    return false;
+  }
+
   // Enemy Turn AI
   processEnemyTurns() {
     const player = this.state.player;
 
     for (const enemy of this.state.enemies) {
       if (enemy.type === 'merchant') continue; // Merchants don't chase or attack!
-      const dist = Math.max(Math.abs(enemy.x - player.x), Math.abs(enemy.y - player.y));
+      
+      // Check sleep/stun status
+      if (enemy.stunTurns && enemy.stunTurns > 0) {
+        enemy.stunTurns--;
+        this.addMessage(`${enemy.name}は眠っている...`);
+        this.spawnParticle(enemy.x + (enemy.width || 1) / 2, enemy.y + (enemy.height || 1) / 2, '#38bdf8', 2);
+        continue;
+      }
+      
+      const ew = enemy.width || 1;
+      const eh = enemy.height || 1;
+
+      // Calculate minimal Chebyshev distance to player from any occupied tile
+      let dist = 9999;
+      for (let dx = 0; dx < ew; dx++) {
+        for (let dy = 0; dy < eh; dy++) {
+          const d = Math.max(Math.abs((enemy.x + dx) - player.x), Math.abs((enemy.y + dy) - player.y));
+          if (d < dist) dist = d;
+        }
+      }
       
       // If adjacent, attack the player
-      if (dist === 1) {
+      if (this.isAdjacentToPlayer(enemy)) {
         this.attackPlayer(enemy);
       } 
       // If player is in range of sight, move towards player
@@ -217,36 +333,21 @@ export class GameEngine {
         const targetX = enemy.x + dx;
         const targetY = enemy.y + dy;
 
-        // Verify bounds
-        if (
-          targetX >= 0 && targetX < this.state.width &&
-          targetY >= 0 && targetY < this.state.height
-        ) {
-          const tile = this.state.tiles[targetX][targetY];
-          const isWall = tile.type === 'wall';
-          const isEnemyOccupied = this.state.enemies.some(e => e.x === targetX && e.y === targetY);
-          const isPlayerOccupied = player.x === targetX && player.y === targetY;
-
-          if (!isWall && !isEnemyOccupied && !isPlayerOccupied) {
-            enemy.x = targetX;
-            enemy.y = targetY;
+        if (this.canEnemyMoveTo(enemy, targetX, targetY)) {
+          enemy.x = targetX;
+          enemy.y = targetY;
+        } else {
+          // Try horizontal only
+          const targetX2 = enemy.x + dx;
+          const targetY2 = enemy.y;
+          if (this.canEnemyMoveTo(enemy, targetX2, targetY2)) {
+            enemy.x = targetX2;
           } else {
-            // Try horizontal only
-            const targetX2 = enemy.x + dx;
-            const targetY2 = enemy.y;
-            const isWallX = this.state.tiles[targetX2]?.[targetY2]?.type === 'wall';
-            const isEnemyOccupiedX = this.state.enemies.some(e => e.x === targetX2 && e.y === targetY2);
-            if (!isWallX && !isEnemyOccupiedX && (targetX2 !== player.x || targetY2 !== player.y)) {
-              enemy.x = targetX2;
-            } else {
-              // Try vertical only
-              const targetX3 = enemy.x;
-              const targetY3 = enemy.y + dy;
-              const isWallY = this.state.tiles[targetX3]?.[targetY3]?.type === 'wall';
-              const isEnemyOccupiedY = this.state.enemies.some(e => e.x === targetX3 && e.y === targetY3);
-              if (!isWallY && !isEnemyOccupiedY && (targetX3 !== player.x || targetY3 !== player.y)) {
-                enemy.y = targetY3;
-              }
+            // Try vertical only
+            const targetX3 = enemy.x;
+            const targetY3 = enemy.y + dy;
+            if (this.canEnemyMoveTo(enemy, targetX3, targetY3)) {
+              enemy.y = targetY3;
             }
           }
         }
@@ -296,7 +397,11 @@ export class GameEngine {
     }
 
     // 2. Check Enemy Combat or Merchant Interaction
-    const enemyAtTarget = this.state.enemies.find(e => e.x === targetX && e.y === targetY);
+    const enemyAtTarget = this.state.enemies.find(e => {
+      const w = e.width || 1;
+      const h = e.height || 1;
+      return targetX >= e.x && targetX < e.x + w && targetY >= e.y && targetY < e.y + h;
+    });
     if (enemyAtTarget) {
       if (enemyAtTarget.type === 'merchant') {
         this.openShop();
@@ -327,7 +432,11 @@ export class GameEngine {
     }
 
     // 6. Update FOV
-    computeFOV(player.x, player.y, this.state.tiles);
+    if (this.debugAllVisible) {
+      this.revealAllMap();
+    } else {
+      computeFOV(player.x, player.y, this.state.tiles);
+    }
 
     // 7. Enemy turns
     this.state.turn++;
@@ -463,7 +572,11 @@ export class GameEngine {
         player.x = tx;
         player.y = ty;
         this.addMessage(`巻物の魔力が暴走し、ダンジョンの別の場所へテレポートした！`);
-        computeFOV(player.x, player.y, this.state.tiles);
+        if (this.debugAllVisible) {
+          this.revealAllMap();
+        } else {
+          computeFOV(player.x, player.y, this.state.tiles);
+        }
         this.spawnParticle(player.x, player.y, '#a855f7', 20, 'Teleport!');
         soundEffects.playStairs();
         this.state.inventory.splice(index, 1);
@@ -501,6 +614,69 @@ export class GameEngine {
           this.addMessage('視界の中に火炎球を放てる敵がいない！');
         }
         break;
+
+      case 'scroll_sleep': {
+        let stunnedCount = 0;
+        for (const enemy of this.state.enemies) {
+          if (enemy.type === 'merchant') continue;
+          const tile = this.state.tiles[enemy.x]?.[enemy.y];
+          if (tile && tile.visible) {
+            enemy.stunTurns = Math.floor(Math.random() * 3) + 3; // 3 to 5 turns
+            stunnedCount++;
+            this.spawnParticle(enemy.x + (enemy.width || 1)/2, enemy.y + (enemy.height || 1)/2, '#38bdf8', 12, 'SLEEP');
+          }
+        }
+        if (stunnedCount > 0) {
+          this.addMessage(`眠りの巻物を唱えた！周囲の敵 ${stunnedCount} 体を深い眠りに誘った。`);
+          this.state.inventory.splice(index, 1);
+        } else {
+          this.addMessage('眠らせる敵が周囲にいない！');
+        }
+        break;
+      }
+
+      case 'scroll_thunder': {
+        const targets: Entity[] = [];
+        const thunderDmg = item.value || (15 + this.state.dungeonLevel * 3);
+        for (const enemy of this.state.enemies) {
+          if (enemy.type === 'merchant') continue;
+          const tile = this.state.tiles[enemy.x]?.[enemy.y];
+          if (tile && tile.visible) {
+            targets.push(enemy);
+          }
+        }
+        if (targets.length > 0) {
+          this.addMessage(`雷光の巻物を唱えた！視界の敵 ${targets.length} 体に雷撃を落とし、それぞれ ${thunderDmg} ダメージを与えた！`);
+          soundEffects.playFireball();
+          this.state.inventory.splice(index, 1);
+
+          for (const enemy of targets) {
+            enemy.hp -= thunderDmg;
+            this.spawnParticle(enemy.x + (enemy.width || 1)/2, enemy.y + (enemy.height || 1)/2, '#eab308', 15, `-${thunderDmg} (雷)`);
+            if (enemy.hp <= 0) {
+              this.defeatEnemy(enemy);
+            }
+          }
+        } else {
+          this.addMessage('周囲に雷を落とす敵がいない！');
+        }
+        break;
+      }
+
+      case 'scroll_mapping': {
+        for (let x = 0; x < this.state.width; x++) {
+          for (let y = 0; y < this.state.height; y++) {
+            if (this.state.tiles[x]?.[y]) {
+              this.state.tiles[x][y].explored = true;
+            }
+          }
+        }
+        this.addMessage('千里眼の巻物を読んだ。フロアの全貌が頭の中に浮かび上がった！');
+        this.spawnParticle(player.x, player.y, '#10b981', 15, 'MAPPING');
+        soundEffects.playStairs();
+        this.state.inventory.splice(index, 1);
+        break;
+      }
     }
 
     // Trigger enemy turns after using an item
@@ -534,8 +710,14 @@ export class GameEngine {
     soundEffects.playGold();
   }
 
+  // Shop navigation states
+  public shopActiveTab: 'buy' | 'sell' = 'buy';
+  public shopSelectedIndex: number = 0;
+
   openShop() {
     this.state.status = 'shop';
+    this.shopActiveTab = 'buy';
+    this.shopSelectedIndex = 0;
     this.addMessage('「おや、旅のお人。良い品を揃えているよ。何が必要だい？」');
     window.dispatchEvent(new CustomEvent('shop-opened'));
   }
@@ -548,11 +730,56 @@ export class GameEngine {
 
   getShopItems() {
     const level = this.state.dungeonLevel;
+    
+    // Weapon details matching dungeon levels 1-10
+    const weaponNames = [
+      '錆びた剣',          // level 1
+      '鉄の剣',            // level 2
+      '鋼鉄の剣',          // level 3
+      'ルーンブレード',    // level 4
+      'エクスカリバー',    // level 5
+      '魔導の杖',          // level 6
+      '竜殺しの大剣',      // level 7
+      '魔剣レーヴァテイン',// level 8
+      '光の聖剣アルテマ',  // level 9
+      '創世神の剣'         // level 10
+    ];
+    const weaponColors = [
+      '#a8a29e', '#cbd5e1', '#94a3b8', '#60a5fa', '#a855f7',
+      '#34d399', '#f43f5e', '#fb923c', '#facc15', '#ec4899'
+    ];
+    const wIdx = Math.max(0, Math.min(level - 1, 9));
+    const weaponName = weaponNames[wIdx];
+    const weaponColor = weaponColors[wIdx];
+    const weaponValue = Math.floor(2 + level * 2.0);
+
+    // Armor details matching dungeon levels 1-10
+    const armorNames = [
+      '古びた盾',          // level 1
+      '鉄の盾',            // level 2
+      '鋼鉄の盾',          // level 3
+      '騎士の盾',          // level 4
+      'イージスの盾',      // level 5
+      '紅蓮の鎧',          // level 6
+      '影の防具',          // level 7
+      '魔王の盾',          // level 8
+      '光の盾ソール',      // level 9
+      '神の鎧ゴッドアーマー' // level 10
+    ];
+    const armorColors = [
+      '#78716c', '#94a3b8', '#64748b', '#3b82f6', '#a855f7',
+      '#ef4444', '#312e81', '#581c87', '#f59e0b', '#ec4899'
+    ];
+    const aIdx = Math.max(0, Math.min(level - 1, 9));
+    const armorName = armorNames[aIdx];
+    const armorColor = armorColors[aIdx];
+    const armorValue = Math.floor(1 + level * 1.5);
+
     const items = [
       {
         id: 'shop_potion_heal',
         name: '回復薬',
-        price: 30,
+        price: 40,
         description: 'HPを最大値の40%回復する。',
         type: 'potion_heal',
         symbol: '!',
@@ -572,7 +799,7 @@ export class GameEngine {
       {
         id: 'shop_scroll_fireball',
         name: '火炎球の巻物',
-        price: 40,
+        price: 60,
         description: `最も近い敵に ${20 + level * 5} ダメージ。`,
         type: 'scroll_fireball',
         symbol: '?',
@@ -580,24 +807,44 @@ export class GameEngine {
         value: 20 + level * 5
       },
       {
+        id: 'shop_scroll_sleep',
+        name: '眠りの巻物',
+        price: 50,
+        description: '周囲の敵を数ターンの間眠らせる。',
+        type: 'scroll_sleep',
+        symbol: '?',
+        color: '#38bdf8',
+        value: 0
+      },
+      {
+        id: 'shop_scroll_mapping',
+        name: '千里眼の巻物',
+        price: 40,
+        description: 'フロア全体のマップを明らかにする。',
+        type: 'scroll_mapping',
+        symbol: '?',
+        color: '#10b981',
+        value: 0
+      },
+      {
         id: 'shop_weapon',
-        name: level === 1 ? '錆びた剣' : level === 2 ? '鉄の剣' : level === 3 ? '鋼鉄の剣' : level === 4 ? 'ルーンブレード' : 'エクスカリバー',
-        price: level * 40,
-        description: `攻撃力が ${Math.floor(1 + level * 1.5)} 上がる武器。`,
+        name: weaponName,
+        price: level * 50,
+        description: `攻撃力が ${weaponValue} 上がる強力な武器。`,
         type: 'weapon_sword',
         symbol: '/',
-        color: '#a8a29e',
-        value: Math.floor(1 + level * 1.5)
+        color: weaponColor,
+        value: weaponValue
       },
       {
         id: 'shop_armor',
-        name: level === 1 ? '古びた盾' : level === 2 ? '鉄の盾' : level === 3 ? '鋼鉄の盾' : level === 4 ? '騎士の盾' : 'イージスの盾',
-        price: level * 30,
-        description: `防御力が ${Math.floor(1 + level * 1.0)} 上がる防具。`,
+        name: armorName,
+        price: level * 40,
+        description: `防御力が ${armorValue} 上がる強力な防具。`,
         type: 'armor_shield',
         symbol: '[',
-        color: '#60a5fa',
-        value: Math.floor(1 + level * 1.0)
+        color: armorColor,
+        value: armorValue
       }
     ];
     return items;
@@ -644,13 +891,19 @@ export class GameEngine {
   getSellPrice(item: Item): number {
     switch (item.type) {
       case 'potion_heal':
-        return 15;
+        return 20;
       case 'potion_strength':
         return 40;
       case 'scroll_fireball':
-        return 20;
+        return 30;
       case 'scroll_teleport':
-        return 15;
+        return 30;
+      case 'scroll_sleep':
+        return 25;
+      case 'scroll_thunder':
+        return 35;
+      case 'scroll_mapping':
+        return 20;
       case 'weapon_sword':
         return item.value * 8;
       case 'armor_shield':

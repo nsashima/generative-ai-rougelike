@@ -236,6 +236,63 @@ class SoundEffectsManager {
     osc1.stop(now + 0.25);
     osc2.stop(now + 0.25);
   }
+
+  playTyping() {
+    this.initCtx();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    // Slightly randomize pitch for a retro chirping sound
+    const pitch = 700 + Math.random() * 150;
+    osc.frequency.setValueAtTime(pitch, now);
+
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.03);
+  }
+
+  playFanfare() {
+    this.initCtx();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // Classic RPG arpeggio fanfare: C4 -> G4 -> C5 -> E5 -> G5 -> C6
+    const notes = [
+      { freq: 261.63, duration: 0.12, time: 0.0 },
+      { freq: 392.00, duration: 0.12, time: 0.12 },
+      { freq: 523.25, duration: 0.12, time: 0.24 },
+      { freq: 659.25, duration: 0.16, time: 0.36 },
+      { freq: 783.99, duration: 0.16, time: 0.52 },
+      { freq: 1046.50, duration: 0.5, time: 0.68 }
+    ];
+
+    notes.forEach(note => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+
+      osc.type = 'triangle'; // Warmer, brassy retro sound
+      osc.frequency.setValueAtTime(note.freq, now + note.time);
+
+      gain.gain.setValueAtTime(0.12, now + note.time);
+      gain.gain.linearRampToValueAtTime(0.12, now + note.time + note.duration - 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.duration);
+
+      osc.connect(gain);
+      gain.connect(this.ctx!.destination);
+
+      osc.start(now + note.time);
+      osc.stop(now + note.time + note.duration);
+    });
+  }
 }
 
 export const soundEffects = new SoundEffectsManager();

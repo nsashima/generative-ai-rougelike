@@ -35,11 +35,13 @@ export function generateDungeon(level: number, width: number, height: number): {
 
   const rooms: Room[] = [];
   const minRoomSize = 6;
-  const maxRoomSize = 12;
-  const maxRooms = 15;
+  const maxRoomSize = 15;
+  const targetRooms = randomRange(4, 6);
 
   // 2. Generate rooms
-  for (let i = 0; i < maxRooms; i++) {
+  for (let i = 0; i < 100; i++) {
+    if (rooms.length >= targetRooms) break;
+
     const w = randomRange(minRoomSize, maxRoomSize);
     const h = randomRange(minRoomSize, maxRoomSize);
     const x = randomRange(1, width - w - 2);
@@ -84,11 +86,11 @@ export function generateDungeon(level: number, width: number, height: number): {
 
     // Random choice: Horizontal then Vertical, or Vertical then Horizontal
     if (Math.random() < 0.5) {
-      carveHorizontal(tiles, prevCenterX, currCenterX, prevCenterY);
-      carveVertical(tiles, prevCenterY, currCenterY, currCenterX);
+      carveHorizontal(tiles, prevCenterX, currCenterX, prevCenterY, level === 5 || level === 10);
+      carveVertical(tiles, prevCenterY, currCenterY, currCenterX, level === 5 || level === 10);
     } else {
-      carveVertical(tiles, prevCenterY, currCenterY, prevCenterX);
-      carveHorizontal(tiles, prevCenterX, currCenterX, currCenterY);
+      carveVertical(tiles, prevCenterY, currCenterY, prevCenterX, level === 5 || level === 10);
+      carveHorizontal(tiles, prevCenterX, currCenterX, currCenterY, level === 5 || level === 10);
     }
   }
 
@@ -102,8 +104,8 @@ export function generateDungeon(level: number, width: number, height: number): {
     y: Math.floor(firstRoom.y + firstRoom.h / 2)
   };
 
-  // 5. Place Stairs Down in the last room center (except on final level 5)
-  if (level < 5) {
+  // 5. Place Stairs Down in the last room center (except on level 5 and final level 10)
+  if (level < 10 && level !== 5) {
     const lastRoom = rooms[rooms.length - 1];
     const stairsX = Math.floor(lastRoom.x + lastRoom.w / 2);
     const stairsY = Math.floor(lastRoom.y + lastRoom.h / 2);
@@ -135,9 +137,30 @@ export function generateDungeon(level: number, width: number, height: number): {
       { type: 'golem', name: 'アイアンゴーレム', hp: 60, att: 24, def: 8, xp: 120, symbol: 'G', color: '#4b5563' }
     ],
     5: [
-      // Boss level has normal guards but the big target is the Dragon
       { type: 'skeleton', name: 'デスナイト', hp: 45, att: 22, def: 5, xp: 90, symbol: 'K', color: '#475569' },
       { type: 'golem', name: 'アイアンゴーレム', hp: 60, att: 24, def: 8, xp: 120, symbol: 'G', color: '#4b5563' }
+    ],
+    6: [
+      { type: 'hellhound', name: 'ヘルハウンド', hp: 40, att: 18, def: 3, xp: 80, symbol: 'f', color: '#f97316' },
+      { type: 'goblin', name: 'ゴブリンロード', hp: 50, att: 22, def: 4, xp: 100, symbol: 'L', color: '#a3e635' }
+    ],
+    7: [
+      { type: 'hellhound', name: 'ヘルハウンド', hp: 40, att: 18, def: 3, xp: 80, symbol: 'f', color: '#f97316' },
+      { type: 'skeleton', name: 'スケルトンナイト', hp: 55, att: 26, def: 5, xp: 120, symbol: 'S', color: '#cbd5e1' },
+      { type: 'vampire', name: 'ヴァンパイア', hp: 60, att: 28, def: 4, xp: 150, symbol: 'v', color: '#ec4899' }
+    ],
+    8: [
+      { type: 'vampire', name: 'ヴァンパイア', hp: 60, att: 28, def: 4, xp: 150, symbol: 'v', color: '#ec4899' },
+      { type: 'demon', name: 'デーモン', hp: 70, att: 32, def: 5, xp: 200, symbol: 'd', color: '#dc2626' },
+      { type: 'golem', name: 'マグマゴーレム', hp: 90, att: 30, def: 10, xp: 250, symbol: 'G', color: '#ea580c' }
+    ],
+    9: [
+      { type: 'demon', name: 'デーモン', hp: 70, att: 32, def: 5, xp: 200, symbol: 'd', color: '#dc2626' },
+      { type: 'archdemon', name: 'アークデーモン', hp: 95, att: 36, def: 7, xp: 300, symbol: 'A', color: '#b91c1c' }
+    ],
+    10: [
+      { type: 'demon', name: 'デーモン', hp: 70, att: 32, def: 5, xp: 200, symbol: 'd', color: '#dc2626' },
+      { type: 'archdemon', name: 'アークデーモン', hp: 95, att: 36, def: 7, xp: 300, symbol: 'A', color: '#b91c1c' }
     ]
   };
 
@@ -145,8 +168,12 @@ export function generateDungeon(level: number, width: number, height: number): {
   for (let r = 1; r < rooms.length; r++) {
     const room = rooms[r];
 
-    // Spawn enemies (1-3 per room)
-    const enemyCount = randomRange(1, 3);
+    // Spawn enemies based on room area. (Larger rooms get more enemies)
+    // Area ranges from 36 (6x6) to 225 (15x15) tiles.
+    // We target roughly 1 enemy per 30 tiles, clamped between 1 and 5.
+    const roomArea = room.w * room.h;
+    const baseEnemies = Math.floor(roomArea / 30);
+    const enemyCount = Math.max(1, Math.min(5, baseEnemies + randomRange(0, 1)));
     for (let e = 0; e < enemyCount; e++) {
       // Pick random floor tile in room
       const rx = randomRange(room.x, room.x + room.w - 1);
@@ -155,7 +182,7 @@ export function generateDungeon(level: number, width: number, height: number): {
       // Check if already occupied
       const occupied = enemies.some(enemy => enemy.x === rx && enemy.y === ry);
       if (!occupied && (rx !== playerStart.x || ry !== playerStart.y)) {
-        const list = enemyTypesByLevel[Math.min(level, 5)];
+        const list = enemyTypesByLevel[Math.min(level, 10)];
         const template = list[randomRange(0, list.length - 1)];
 
         enemies.push({
@@ -176,8 +203,9 @@ export function generateDungeon(level: number, width: number, height: number): {
       }
     }
 
-    // Spawn items (0-2 per room)
-    const itemCount = randomRange(0, 2);
+    // Spawn items based on room area. (Clamp between 1 and 3 items per room)
+    const baseItems = Math.floor(roomArea / 60);
+    const itemCount = Math.max(1, Math.min(3, baseItems + randomRange(0, 1)));
     for (let it = 0; it < itemCount; it++) {
       const rx = randomRange(room.x, room.x + room.w - 1);
       const ry = randomRange(room.y, room.y + room.h - 1);
@@ -189,19 +217,19 @@ export function generateDungeon(level: number, width: number, height: number): {
         let name = 'ゴールド';
         let symbol = '$';
         let color = '#fbbf24';
-        let value = randomRange(10, 25) * level; // slightly buffed gold value
+        let value = randomRange(5, 15) * level; // reduced gold value to balance economy
         let description = `${value}ゴールドが入っている。`;
 
-        if (itemTypeChance < 0.40) {
+        if (itemTypeChance < 0.25) {
           // Gold (default values already set)
-        } else if (itemTypeChance < 0.60) {
+        } else if (itemTypeChance < 0.50) {
           type = 'potion_heal';
           name = '回復薬';
           symbol = '!';
           color = '#ef4444';
           value = 40; // 40% healing
           description = 'HPを最大値の40%回復する。';
-        } else if (itemTypeChance < 0.65) {
+        } else if (itemTypeChance < 0.60) {
           type = 'potion_strength';
           name = '力増強の薬';
           symbol = '!';
@@ -210,34 +238,106 @@ export function generateDungeon(level: number, width: number, height: number): {
           description = '攻撃力を永久に 1 上昇させる。';
         } else if (itemTypeChance < 0.75) {
           type = 'weapon_sword';
-          name = level === 1 ? '錆びた剣' : level === 2 ? '鉄の剣' : level === 3 ? '鋼鉄の剣' : level === 4 ? 'ルーンブレード' : 'エクスカリバー';
+          const weaponNames = [
+            '錆びた剣',          // level 1
+            '鉄の剣',            // level 2
+            '鋼鉄の剣',          // level 3
+            'ルーンブレード',    // level 4
+            'エクスカリバー',    // level 5
+            '魔導の杖',          // level 6
+            '竜殺しの大剣',      // level 7
+            '魔剣レーヴァテイン',// level 8
+            '光の聖剣アルテマ',  // level 9
+            '創世神の剣'         // level 10
+          ];
+          const weaponColors = [
+            '#a8a29e', // rust grey
+            '#cbd5e1', // steel
+            '#94a3b8', // blue steel
+            '#60a5fa', // blue runic
+            '#a855f7', // purple legendary
+            '#34d399', // emerald green staff
+            '#f43f5e', // crimson dragon slayer
+            '#fb923c', // fiery orange sword
+            '#facc15', // gold ultimate
+            '#ec4899'  // pink divine
+          ];
+          const idx = Math.max(0, Math.min(level - 1, 9));
+          name = weaponNames[idx];
+          color = weaponColors[idx];
           symbol = '/';
-          color = '#a8a29e';
-          value = Math.floor(1 + level * 1.5); // weapon power
+          value = Math.floor(2 + level * 2.0); // weapon power
           description = `攻撃力が ${value} 上がる武器。`;
-        } else if (itemTypeChance < 0.85) {
+        } else if (itemTypeChance < 0.88) {
           type = 'armor_shield';
-          name = level === 1 ? '古びた盾' : level === 2 ? '鉄の盾' : level === 3 ? '鋼鉄の盾' : level === 4 ? '騎士の盾' : 'イージスの盾';
+          const armorNames = [
+            '古びた盾',          // level 1
+            '鉄の盾',            // level 2
+            '鋼鉄の盾',          // level 3
+            '騎士の盾',          // level 4
+            'イージスの盾',      // level 5
+            '紅蓮の鎧',          // level 6
+            '影の防具',          // level 7
+            '魔王の盾',          // level 8
+            '光の盾ソール',      // level 9
+            '神の鎧ゴッドアーマー' // level 10
+          ];
+          const armorColors = [
+            '#78716c', // rusty stone
+            '#94a3b8', // steel
+            '#64748b', // heavy metal
+            '#3b82f6', // knight blue
+            '#a855f7', // legendary purple
+            '#ef4444', // crimson red
+            '#312e81', // dark navy shadow
+            '#581c87', // demon purple
+            '#f59e0b', // gold sun shield
+            '#ec4899'  // pink god armor
+          ];
+          const idx = Math.max(0, Math.min(level - 1, 9));
+          name = armorNames[idx];
+          color = armorColors[idx];
           symbol = '[';
-          color = '#60a5fa';
-          value = Math.floor(1 + level * 1.0); // armor power
+          value = Math.floor(1 + level * 1.5); // armor power
           description = `防御力が ${value} 上がる防具。`;
         } else {
           // scrolls
-          if (Math.random() < 0.5) {
+          const scrollChance = Math.random();
+          if (scrollChance < 0.22) {
             type = 'scroll_teleport';
             name = '瞬間移動の巻物';
             symbol = '?';
             color = '#a855f7';
             value = 0;
             description = 'ダンジョン内のランダムな位置にテレポートする。';
-          } else {
+          } else if (scrollChance < 0.44) {
             type = 'scroll_fireball';
             name = '火炎球の巻物';
             symbol = '?';
             color = '#f97316';
-            value = 20 + level * 5; // nerfed fireball damage
+            value = 20 + level * 5;
             description = `視界内の最も近い敵に${value}の火炎ダメージを与える。`;
+          } else if (scrollChance < 0.64) {
+            type = 'scroll_sleep';
+            name = '眠りの巻物';
+            symbol = '?';
+            color = '#38bdf8';
+            value = 0;
+            description = '部屋や通路にいる周囲の敵を眠らせて数ターンの間行動不能にする。';
+          } else if (scrollChance < 0.84) {
+            type = 'scroll_thunder';
+            name = '雷光の巻物';
+            symbol = '?';
+            color = '#eab308';
+            value = 15 + level * 3;
+            description = `視界内のすべての敵に${value}の雷ダメージを与える。`;
+          } else {
+            type = 'scroll_mapping';
+            name = '千里眼の巻物';
+            symbol = '?';
+            color = '#10b981';
+            value = 0;
+            description = 'フロア全体のマップを明らかにする。';
           }
         }
 
@@ -256,8 +356,8 @@ export function generateDungeon(level: number, width: number, height: number): {
     }
   }
 
-  // 6.5 Spawn Merchant (levels 2, 3, 4)
-  if (level >= 2 && level <= 4 && rooms.length > 2) {
+  // 6.5 Spawn Merchant (levels 2 and deeper)
+  if (level >= 2 && rooms.length > 2) {
     const merchantRoom = rooms[Math.floor(rooms.length / 2)];
     const merchantX = Math.floor(merchantRoom.x + merchantRoom.w / 2);
     const merchantY = Math.floor(merchantRoom.y + merchantRoom.h / 2);
@@ -285,26 +385,23 @@ export function generateDungeon(level: number, width: number, height: number): {
     });
   }
 
-  // 7. LEVEL 5 BOSS: Dragon spawn
+  // 7. LEVEL 5 BOSS: Goblin King
   if (level === 5) {
-    // Put Dragon in the middle of the last room
     const lastRoom = rooms[rooms.length - 1];
     const bossX = Math.floor(lastRoom.x + lastRoom.w / 2);
     const bossY = Math.floor(lastRoom.y + lastRoom.h / 2);
 
-    // Remove any items and normal enemies at that spot
     const cleanIndexE = enemies.findIndex(e => e.x === bossX && e.y === bossY);
     if (cleanIndexE !== -1) enemies.splice(cleanIndexE, 1);
     const cleanIndexI = items.findIndex(i => i.x === bossX && i.y === bossY);
     if (cleanIndexI !== -1) items.splice(cleanIndexI, 1);
 
-    // Spawn Dragon
     enemies.push({
       id: uuid(),
       x: bossX,
       y: bossY,
       type: 'dragon',
-      name: '邪竜アルドゥイン',
+      name: 'ゴブリンキング',
       hp: 160,
       maxHp: 160,
       att: 32,
@@ -312,18 +409,61 @@ export function generateDungeon(level: number, width: number, height: number): {
       xpValue: 500,
       level: 5,
       symbol: 'D',
-      color: '#dc2626' // vivid red
+      color: '#dc2626',
+      width: 2,
+      height: 2
     });
 
-    // Also spawn a legendary item right behind the dragon or on its spot: "Legendary Amulet"
     items.push({
       id: uuid(),
       x: bossX,
       y: Math.max(1, bossY - 1),
-      type: 'gold', // acts as winning relic or special item
+      type: 'armor_shield',
+      name: 'キングの盾 (King\'s Shield)',
+      symbol: '[',
+      color: '#fbbf24',
+      value: 12,
+      description: 'ゴブリンキングが守っていた、比類なき堅牢さを誇る金色の盾。'
+    });
+  }
+
+  // 8. LEVEL 10 FINAL BOSS: Demon King Sashima
+  if (level === 10) {
+    const lastRoom = rooms[rooms.length - 1];
+    const bossX = Math.floor(lastRoom.x + lastRoom.w / 2);
+    const bossY = Math.floor(lastRoom.y + lastRoom.h / 2);
+
+    const cleanIndexE = enemies.findIndex(e => e.x === bossX && e.y === bossY);
+    if (cleanIndexE !== -1) enemies.splice(cleanIndexE, 1);
+    const cleanIndexI = items.findIndex(i => i.x === bossX && i.y === bossY);
+    if (cleanIndexI !== -1) items.splice(cleanIndexI, 1);
+
+    enemies.push({
+      id: uuid(),
+      x: bossX,
+      y: bossY,
+      type: 'demon_king',
+      name: '邪教の心眼',
+      hp: 350,
+      maxHp: 350,
+      att: 55,
+      def: 18,
+      xpValue: 1500,
+      level: 10,
+      symbol: 'E',
+      color: '#f43f5e',
+      width: 2,
+      height: 2
+    });
+
+    items.push({
+      id: uuid(),
+      x: bossX,
+      y: Math.max(1, bossY - 1),
+      type: 'gold', // winning relic
       name: '生成AIの秘宝 (Amulet of Generative AI)',
       symbol: '*',
-      color: '#f43f5e', // glowing pinkish-red
+      color: '#ec4899',
       value: 9999,
       description: 'このダンジョンの最深部に眠る究極のアーティファクト。手に入れると勝利する。'
     });
@@ -397,19 +537,29 @@ export function generateDungeon(level: number, width: number, height: number): {
   };
 }
 
-function carveHorizontal(tiles: Tile[][], x1: number, x2: number, y: number) {
+function carveHorizontal(tiles: Tile[][], x1: number, x2: number, y: number, width2x2: boolean = false) {
   const start = Math.min(x1, x2);
   const end = Math.max(x1, x2);
+  const height = tiles[0].length;
   for (let x = start; x <= end; x++) {
     tiles[x][y].type = 'floor';
+    if (width2x2) {
+      if (y + 1 < height) tiles[x][y + 1].type = 'floor';
+      if (y - 1 >= 0) tiles[x][y - 1].type = 'floor';
+    }
   }
 }
 
-function carveVertical(tiles: Tile[][], y1: number, y2: number, x: number) {
+function carveVertical(tiles: Tile[][], y1: number, y2: number, x: number, width2x2: boolean = false) {
   const start = Math.min(y1, y2);
   const end = Math.max(y1, y2);
+  const width = tiles.length;
   for (let y = start; y <= end; y++) {
     tiles[x][y].type = 'floor';
+    if (width2x2) {
+      if (x + 1 < width) tiles[x + 1][y].type = 'floor';
+      if (x - 1 >= 0) tiles[x - 1][y].type = 'floor';
+    }
   }
 }
 

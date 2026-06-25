@@ -11,6 +11,15 @@ let renderer: DungeonRenderer;
 let soundToggleBtn: HTMLButtonElement;
 let restartBtn: HTMLButtonElement;
 
+// Debug elements
+let debugPanel: HTMLElement;
+let dbWarpBtn: HTMLButtonElement;
+let dbWarp10Btn: HTMLButtonElement;
+let dbGodBtn: HTMLButtonElement;
+let dbMapBtn: HTMLButtonElement;
+let dbGoldBtn: HTMLButtonElement;
+let dbCloseBtn: HTMLButtonElement;
+
 // Stats elements
 let statFloor: HTMLElement;
 let statGold: HTMLElement;
@@ -57,6 +66,10 @@ let closeShopBtn: HTMLButtonElement;
 let shopGoldVal: HTMLElement;
 let shopItemList: HTMLElement;
 let shopSellList: HTMLElement;
+let shopTabBuy: HTMLButtonElement;
+let shopTabSell: HTMLButtonElement;
+let shopBuyPanel: HTMLElement;
+let shopSellPanel: HTMLElement;
 
 // Mobile pad controls
 let ctrlUp: HTMLButtonElement;
@@ -64,6 +77,31 @@ let ctrlDown: HTMLButtonElement;
 let ctrlLeft: HTMLButtonElement;
 let ctrlRight: HTMLButtonElement;
 let ctrlDescend: HTMLButtonElement;
+
+// Item Detail elements
+let itemDetailModal: HTMLElement;
+let closeItemDetailBtn: HTMLButtonElement;
+let itemDetailCloseBtn: HTMLButtonElement;
+let itemDetailUseBtn: HTMLButtonElement;
+let itemDetailDropBtn: HTMLButtonElement;
+let itemDetailSymbol: HTMLElement;
+let itemDetailName: HTMLElement;
+let itemDetailType: HTMLElement;
+let itemDetailValue: HTMLElement;
+let itemDetailPrice: HTMLElement;
+let itemDetailDesc: HTMLElement;
+let selectedInventoryIndex: number = -1;
+
+// Help elements
+let helpBtn: HTMLButtonElement;
+let helpModal: HTMLElement;
+let closeHelpBtn: HTMLButtonElement;
+
+// Prologue elements
+let prologueText: HTMLElement;
+let skipPrologueBtn: HTMLButtonElement;
+let prologueTimer: ReturnType<typeof setTimeout> | null = null;
+let isPrologueActive: boolean = false;
 
 window.addEventListener('DOMContentLoaded', () => {
   // Initialize variables
@@ -98,6 +136,10 @@ window.addEventListener('DOMContentLoaded', () => {
   shopGoldVal = document.getElementById('shop-gold-val')!;
   shopItemList = document.getElementById('shop-item-list')!;
   shopSellList = document.getElementById('shop-sell-list')!;
+  shopTabBuy = document.getElementById('shop-tab-buy') as HTMLButtonElement;
+  shopTabSell = document.getElementById('shop-tab-sell') as HTMLButtonElement;
+  shopBuyPanel = document.getElementById('shop-buy-panel')!;
+  shopSellPanel = document.getElementById('shop-sell-panel')!;
 
   // Start overlay elements
   startOverlay = document.getElementById('start-overlay')!;
@@ -126,6 +168,37 @@ window.addEventListener('DOMContentLoaded', () => {
   ctrlRight = document.getElementById('ctrl-right') as HTMLButtonElement;
   ctrlDescend = document.getElementById('ctrl-descend') as HTMLButtonElement;
 
+  // Debug elements
+  debugPanel = document.getElementById('debug-panel')!;
+  dbWarpBtn = document.getElementById('db-warp-btn') as HTMLButtonElement;
+  dbWarp10Btn = document.getElementById('db-warp10-btn') as HTMLButtonElement;
+  dbGodBtn = document.getElementById('db-god-btn') as HTMLButtonElement;
+  dbMapBtn = document.getElementById('db-map-btn') as HTMLButtonElement;
+  dbGoldBtn = document.getElementById('db-gold-btn') as HTMLButtonElement;
+  dbCloseBtn = document.getElementById('db-close-btn') as HTMLButtonElement;
+
+  // Item Detail elements
+  itemDetailModal = document.getElementById('item-detail-modal')!;
+  closeItemDetailBtn = document.getElementById('close-item-detail-btn') as HTMLButtonElement;
+  itemDetailCloseBtn = document.getElementById('item-detail-close-btn') as HTMLButtonElement;
+  itemDetailUseBtn = document.getElementById('item-detail-use-btn') as HTMLButtonElement;
+  itemDetailDropBtn = document.getElementById('item-detail-drop-btn') as HTMLButtonElement;
+  itemDetailSymbol = document.getElementById('item-detail-symbol')!;
+  itemDetailName = document.getElementById('item-detail-name')!;
+  itemDetailType = document.getElementById('item-detail-type')!;
+  itemDetailValue = document.getElementById('item-detail-value')!;
+  itemDetailPrice = document.getElementById('item-detail-price')!;
+  itemDetailDesc = document.getElementById('item-detail-desc')!;
+
+  // Help elements
+  helpBtn = document.getElementById('help-btn') as HTMLButtonElement;
+  helpModal = document.getElementById('help-modal')!;
+  closeHelpBtn = document.getElementById('close-help-btn') as HTMLButtonElement;
+
+  // Prologue elements
+  prologueText = document.getElementById('prologue-text')!;
+  skipPrologueBtn = document.getElementById('skip-prologue-btn') as HTMLButtonElement;
+
   // Bind Events
   setupEvents();
 
@@ -134,14 +207,109 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Initial HUD render
   updateHUD();
+
+  // Start the typing prologue intro
+  startPrologue();
 });
 
 function setupEvents() {
-  // Keyboard movement
+  // Keyboard movement and actions
   window.addEventListener('keydown', (e: KeyboardEvent) => {
+    // If Prologue is active, Space or Enter skips it
+    if (isPrologueActive) {
+      if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
+        e.preventDefault();
+        skipPrologue();
+        return;
+      }
+    }
+
+    // If Help Modal is open, handle its keyboard commands first
+    if (!helpModal.classList.contains('hidden')) {
+      if (e.key === 'Escape' || e.key === 'Backspace' || e.code === 'KeyH') {
+        e.preventDefault();
+        closeHelp();
+        return;
+      }
+      // Block any other key input while help modal is active
+      e.preventDefault();
+      return;
+    }
+
+    // If Item Detail Modal is open, handle its keyboard commands first
+    if (!itemDetailModal.classList.contains('hidden')) {
+      if (e.key === 'Escape' || e.key === 'Backspace' || e.code === 'KeyC') {
+        e.preventDefault();
+        closeItemDetail();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedInventoryIndex !== -1) {
+          engine.useInventoryItem(selectedInventoryIndex);
+          closeItemDetail();
+          updateHUD();
+        }
+        return;
+      }
+      if (e.code === 'KeyD' || e.key === 'Delete') {
+        e.preventDefault();
+        if (selectedInventoryIndex !== -1) {
+          engine.dropInventoryItem(selectedInventoryIndex);
+          closeItemDetail();
+          updateHUD();
+        }
+        return;
+      }
+      // Block any other key input while modal is active
+      e.preventDefault();
+      return;
+    }
+
+    // Debug toggle shortcut: Ctrl + Shift + D
+    if (e.ctrlKey && e.shiftKey && e.code === 'KeyD') {
+      e.preventDefault();
+      const pw = prompt('デバッグパスワードを入力してください:');
+      if (pw === 'sashima') {
+        debugPanel.classList.remove('hidden-debug');
+        engine.addMessage('【デバッグ】デバッグモードが有効になりました。');
+        updateHUD();
+      } else if (pw !== null) {
+        alert('パスワードが正しくありません。');
+      }
+      return;
+    }
+
     // Prevent default scrolling for arrows and space
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(e.key)) {
       e.preventDefault();
+    }
+
+    // Prevent digit defaults to avoid unexpected browser shortcut conflicts
+    if (e.code.startsWith('Digit')) {
+      e.preventDefault();
+    }
+
+    // Global keys (work in any status)
+    if (e.code === 'KeyM') {
+      const isEnabled = soundEffects.toggle();
+      if (isEnabled) {
+        soundToggleBtn.classList.remove('muted');
+        soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>';
+      } else {
+        soundToggleBtn.classList.add('muted');
+        soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ <kbd class="key-hint">M</kbd>';
+      }
+      return;
+    }
+    if (e.code === 'KeyR') {
+      handleRestart();
+      return;
+    }
+    if (e.code === 'KeyH') {
+      e.preventDefault();
+      toggleHelp();
+      return;
     }
 
     if (engine.state.status !== 'playing') {
@@ -149,11 +317,88 @@ function setupEvents() {
         if (e.key === 'Escape') {
           engine.closeShop();
           updateHUD();
+          return;
+        }
+
+        // Tab, or ArrowLeft/ArrowRight or A/D to switch tabs
+        if (e.key === 'Tab' || e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'KeyA' || e.code === 'KeyD') {
+          e.preventDefault();
+          engine.shopActiveTab = engine.shopActiveTab === 'buy' ? 'sell' : 'buy';
+          engine.shopSelectedIndex = 0;
+          updateHUD();
+          scrollSelectedShopItemIntoView();
+          return;
+        }
+
+        // ArrowUp or KeyW to move selection up
+        if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+          e.preventDefault();
+          const itemsCount = engine.shopActiveTab === 'buy' 
+            ? engine.getShopItems().length 
+            : engine.state.inventory.length;
+          if (itemsCount > 0) {
+            engine.shopSelectedIndex = (engine.shopSelectedIndex - 1 + itemsCount) % itemsCount;
+            updateHUD();
+            scrollSelectedShopItemIntoView();
+          }
+          return;
+        }
+
+        // ArrowDown or KeyS to move selection down
+        if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+          e.preventDefault();
+          const itemsCount = engine.shopActiveTab === 'buy' 
+            ? engine.getShopItems().length 
+            : engine.state.inventory.length;
+          if (itemsCount > 0) {
+            engine.shopSelectedIndex = (engine.shopSelectedIndex + 1) % itemsCount;
+            updateHUD();
+            scrollSelectedShopItemIntoView();
+          }
+          return;
+        }
+
+        // Enter or Space to execute transaction
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (engine.shopActiveTab === 'buy') {
+            const shopItems = engine.getShopItems();
+            const selectedItem = shopItems[engine.shopSelectedIndex];
+            if (selectedItem) {
+              engine.buyItem(selectedItem.id);
+              const newItemsCount = engine.getShopItems().length;
+              if (engine.shopSelectedIndex >= newItemsCount) {
+                engine.shopSelectedIndex = Math.max(0, newItemsCount - 1);
+              }
+              updateHUD();
+              scrollSelectedShopItemIntoView();
+            }
+          } else {
+            const inventory = engine.state.inventory;
+            if (inventory.length > 0) {
+              engine.sellItem(engine.shopSelectedIndex);
+              const newItemsCount = engine.state.inventory.length;
+              if (engine.shopSelectedIndex >= newItemsCount) {
+                engine.shopSelectedIndex = Math.max(0, newItemsCount - 1);
+              }
+              updateHUD();
+              scrollSelectedShopItemIntoView();
+            }
+          }
+          return;
         }
       } else {
-        // If game is not active, any key restarts or starts the game
+        // If game is not active, Enter or Space restarts or starts the game
         if (e.key === 'Enter' || e.key === ' ') {
-          handleRestart();
+          if (!startOverlay.classList.contains('hidden')) {
+            if (!startGameBtn.classList.contains('hidden')) {
+              soundEffects.playFanfare();
+              engine.startGame();
+              updateHUD();
+            }
+          } else {
+            handleRestart();
+          }
         }
       }
       return;
@@ -196,6 +441,26 @@ function setupEvents() {
         break;
     }
 
+    // Inventory interactions: Digit1 to Digit0
+    const digitMatch = e.code.match(/^Digit([0-9])$/);
+    if (digitMatch) {
+      const digit = digitMatch[1];
+      const slotNum = digit === '0' ? 9 : parseInt(digit) - 1;
+      if (slotNum < engine.state.inventory.length) {
+        if (e.altKey) {
+          e.preventDefault();
+          openItemDetail(slotNum);
+        } else if (e.shiftKey) {
+          // Drop item
+          engine.dropInventoryItem(slotNum);
+        } else {
+          // Use / Equip item
+          engine.useInventoryItem(slotNum);
+        }
+        updateHUD();
+      }
+    }
+
     updateHUD();
   });
 
@@ -211,10 +476,10 @@ function setupEvents() {
     const isEnabled = soundEffects.toggle();
     if (isEnabled) {
       soundToggleBtn.classList.remove('muted');
-      soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン';
+      soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>';
     } else {
       soundToggleBtn.classList.add('muted');
-      soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ';
+      soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ <kbd class="key-hint">M</kbd>';
     }
   });
 
@@ -234,10 +499,24 @@ function setupEvents() {
     updateHUD();
   });
 
+  // Shop tab click events
+  shopTabBuy.addEventListener('click', () => {
+    engine.shopActiveTab = 'buy';
+    engine.shopSelectedIndex = 0;
+    updateHUD();
+  });
+
+  shopTabSell.addEventListener('click', () => {
+    engine.shopActiveTab = 'sell';
+    engine.shopSelectedIndex = 0;
+    updateHUD();
+  });
+
   // Listen to shop events
   window.addEventListener('shop-opened', () => {
     shopModal.classList.remove('hidden');
     renderShop();
+    scrollSelectedShopItemIntoView();
   });
 
   window.addEventListener('shop-closed', () => {
@@ -250,8 +529,14 @@ function setupEvents() {
 
   // Start game button click
   startGameBtn.addEventListener('click', () => {
+    soundEffects.playFanfare();
     engine.startGame();
     updateHUD();
+  });
+
+  // Skip prologue button click
+  skipPrologueBtn.addEventListener('click', () => {
+    skipPrologue();
   });
 
   // Restart buttons on overlays
@@ -261,6 +546,73 @@ function setupEvents() {
   vicRestartBtn.addEventListener('click', () => {
     handleRestart();
   });
+
+  // Debug Panel Buttons
+  dbWarpBtn.addEventListener('click', () => {
+    engine.loadLevel(5);
+    engine.addMessage('【デバッグ】地下5階にワープしました。');
+    updateHUD();
+  });
+
+  dbWarp10Btn.addEventListener('click', () => {
+    engine.loadLevel(10);
+    engine.addMessage('【デバッグ】地下10階にワープしました。');
+    updateHUD();
+  });
+
+  dbGodBtn.addEventListener('click', () => {
+    const player = engine.state.player;
+    player.hp = 9999;
+    player.maxHp = 9999;
+    player.att = 999;
+    engine.addMessage('【デバッグ】プレイヤーを無敵化（HP 9999 / ATT 999）にしました。');
+    updateHUD();
+  });
+
+  dbMapBtn.addEventListener('click', () => {
+    engine.debugAllVisible = !engine.debugAllVisible;
+    if (engine.debugAllVisible) {
+      engine.revealAllMap();
+      engine.addMessage('【デバッグ】マップ全開モードをONにしました。');
+    } else {
+      engine.addMessage('【デバッグ】マップ全開モードをOFFにしました。');
+    }
+    updateHUD();
+  });
+
+  dbGoldBtn.addEventListener('click', () => {
+    engine.state.gold += 1000;
+    engine.addMessage('【デバッグ】ゴールド +1000 G');
+    updateHUD();
+  });
+
+  dbCloseBtn.addEventListener('click', () => {
+    debugPanel.classList.add('hidden-debug');
+  });
+
+  // Item Detail click listeners
+  closeItemDetailBtn.addEventListener('click', closeItemDetail);
+  itemDetailCloseBtn.addEventListener('click', closeItemDetail);
+
+  itemDetailUseBtn.addEventListener('click', () => {
+    if (selectedInventoryIndex !== -1) {
+      engine.useInventoryItem(selectedInventoryIndex);
+      closeItemDetail();
+      updateHUD();
+    }
+  });
+
+  itemDetailDropBtn.addEventListener('click', () => {
+    if (selectedInventoryIndex !== -1) {
+      engine.dropInventoryItem(selectedInventoryIndex);
+      closeItemDetail();
+      updateHUD();
+    }
+  });
+
+  // Help Modal click listeners
+  helpBtn.addEventListener('click', toggleHelp);
+  closeHelpBtn.addEventListener('click', closeHelp);
 }
 
 function handleRestart() {
@@ -346,12 +698,7 @@ function updateHUD() {
     nameSpan.style.color = item.color;
     nameSpan.innerText = item.name;
     
-    const descSpan = document.createElement('span');
-    descSpan.className = 'item-desc';
-    descSpan.innerText = item.description;
-    
     detailsDiv.appendChild(nameSpan);
-    detailsDiv.appendChild(descSpan);
     
     infoDiv.appendChild(symbolSpan);
     infoDiv.appendChild(detailsDiv);
@@ -363,23 +710,33 @@ function updateHUD() {
     const useBtn = document.createElement('button');
     useBtn.className = 'btn btn-sm btn-primary';
     
+    const keyNum = index === 9 ? '0' : (index + 1).toString();
+    
     // Check if equipment or consumable
     const isEquip = item.type === 'weapon_sword' || item.type === 'armor_shield';
-    useBtn.innerText = isEquip ? '装備' : '使う';
+    useBtn.innerHTML = `${isEquip ? '装備' : '使う'} <kbd class="key-hint">${keyNum}</kbd>`;
     useBtn.addEventListener('click', () => {
       engine.useInventoryItem(index);
       updateHUD();
     });
 
+    const inspectBtn = document.createElement('button');
+    inspectBtn.className = 'btn btn-sm btn-secondary';
+    inspectBtn.innerHTML = `詳細 <kbd class="key-hint">Alt+${keyNum}</kbd>`;
+    inspectBtn.addEventListener('click', () => {
+      openItemDetail(index);
+    });
+
     const dropBtn = document.createElement('button');
     dropBtn.className = 'btn btn-sm btn-danger';
-    dropBtn.innerText = '置く';
+    dropBtn.innerHTML = `置く <kbd class="key-hint">Shift+${keyNum}</kbd>`;
     dropBtn.addEventListener('click', () => {
       engine.dropInventoryItem(index);
       updateHUD();
     });
 
     actionsDiv.appendChild(useBtn);
+    actionsDiv.appendChild(inspectBtn);
     actionsDiv.appendChild(dropBtn);
 
     li.appendChild(infoDiv);
@@ -421,6 +778,9 @@ function updateHUD() {
     startOverlay.classList.add('hidden');
     gameoverOverlay.classList.add('hidden');
     victoryOverlay.classList.add('hidden');
+    if (state.status === 'shop') {
+      renderShop();
+    }
   }
 
   // Render logs
@@ -456,16 +816,47 @@ function renderLogs() {
   logFeed.scrollTop = logFeed.scrollHeight;
 }
 
+function scrollSelectedShopItemIntoView() {
+  setTimeout(() => {
+    const selectedEl = document.querySelector('.shop-item.selected');
+    if (selectedEl) {
+      selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, 10);
+}
+
 function renderShop() {
   const state = engine.state;
   shopGoldVal.innerText = `${state.gold} G`;
+
+  // Update tabs active state
+  if (engine.shopActiveTab === 'buy') {
+    shopTabBuy.classList.add('active');
+    shopTabSell.classList.remove('active');
+    shopBuyPanel.classList.remove('hidden');
+    shopSellPanel.classList.add('hidden');
+  } else {
+    shopTabBuy.classList.remove('active');
+    shopTabSell.classList.add('active');
+    shopBuyPanel.classList.add('hidden');
+    shopSellPanel.classList.remove('hidden');
+  }
   
   // 1. Render Buy List
   shopItemList.innerHTML = '';
   const shopItems = engine.getShopItems();
-  shopItems.forEach(item => {
+  shopItems.forEach((item, index) => {
     const li = document.createElement('li');
     li.className = 'shop-item';
+    if (engine.shopActiveTab === 'buy' && index === engine.shopSelectedIndex) {
+      li.classList.add('selected');
+    }
+    
+    li.addEventListener('click', () => {
+      engine.shopActiveTab = 'buy';
+      engine.shopSelectedIndex = index;
+      updateHUD();
+    });
 
     const infoDiv = document.createElement('div');
     infoDiv.className = 'shop-item-info';
@@ -501,7 +892,12 @@ function renderShop() {
 
     const buyBtn = document.createElement('button');
     buyBtn.className = 'btn btn-sm btn-primary';
-    buyBtn.innerText = '購入';
+    
+    if (engine.shopActiveTab === 'buy' && index === engine.shopSelectedIndex) {
+      buyBtn.innerHTML = `購入 <kbd class="key-hint">Enter</kbd>`;
+    } else {
+      buyBtn.innerText = `購入`;
+    }
     
     if (state.gold < item.price) {
       buyBtn.disabled = true;
@@ -510,7 +906,10 @@ function renderShop() {
       buyBtn.style.opacity = '0.5';
     }
 
-    buyBtn.addEventListener('click', () => {
+    buyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      engine.shopActiveTab = 'buy';
+      engine.shopSelectedIndex = index;
       engine.buyItem(item.id);
       updateHUD();
     });
@@ -529,13 +928,22 @@ function renderShop() {
     emptyDiv.style.textAlign = 'center';
     emptyDiv.style.fontSize = '0.75rem';
     emptyDiv.style.color = 'var(--text-secondary)';
-    emptyDiv.style.padding = '0.5rem';
+    emptyDiv.style.padding = '1rem';
     emptyDiv.innerText = '売却できるアイテムがありません。';
     shopSellList.appendChild(emptyDiv);
   } else {
     state.inventory.forEach((item, index) => {
       const li = document.createElement('li');
       li.className = 'shop-item';
+      if (engine.shopActiveTab === 'sell' && index === engine.shopSelectedIndex) {
+        li.classList.add('selected');
+      }
+
+      li.addEventListener('click', () => {
+        engine.shopActiveTab = 'sell';
+        engine.shopSelectedIndex = index;
+        updateHUD();
+      });
 
       const infoDiv = document.createElement('div');
       infoDiv.className = 'shop-item-info';
@@ -572,9 +980,22 @@ function renderShop() {
 
       const sellBtn = document.createElement('button');
       sellBtn.className = 'btn btn-sm btn-danger';
-      sellBtn.innerText = '売却';
-      sellBtn.addEventListener('click', () => {
+      if (engine.shopActiveTab === 'sell' && index === engine.shopSelectedIndex) {
+        sellBtn.innerHTML = `売却 <kbd class="key-hint">Enter</kbd>`;
+      } else {
+        sellBtn.innerText = `売却`;
+      }
+      
+      sellBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        engine.shopActiveTab = 'sell';
+        engine.shopSelectedIndex = index;
         engine.sellItem(index);
+        
+        const newItemsCount = engine.state.inventory.length;
+        if (engine.shopSelectedIndex >= newItemsCount) {
+          engine.shopSelectedIndex = Math.max(0, newItemsCount - 1);
+        }
         updateHUD();
       });
 
@@ -586,3 +1007,149 @@ function renderShop() {
     });
   }
 }
+
+function openItemDetail(index: number) {
+  const item = engine.state.inventory[index];
+  if (!item) return;
+  
+  selectedInventoryIndex = index;
+  
+  // Set content
+  itemDetailSymbol.innerText = item.symbol;
+  itemDetailSymbol.style.color = item.color;
+  
+  itemDetailName.innerText = item.name;
+  itemDetailName.style.color = item.color;
+  
+  // Determine type string
+  let typeStr = 'その他';
+  if (item.type === 'weapon_sword') typeStr = '武器';
+  else if (item.type === 'armor_shield') typeStr = '防具';
+  else if (item.type.startsWith('potion')) typeStr = '薬';
+  else if (item.type.startsWith('scroll')) typeStr = '巻物';
+  
+  itemDetailType.innerText = typeStr;
+  
+  // Determine value string
+  let valStr = item.value.toString();
+  if (item.type === 'weapon_sword' || item.type === 'armor_shield') {
+    valStr = `+${item.value}`;
+  } else if (item.type === 'potion_heal') {
+    valStr = `最大HPの ${item.value}% 回復`;
+  } else if (item.type === 'potion_strength') {
+    valStr = `力 +${item.value}`;
+  } else if (item.type === 'scroll_fireball' || item.type === 'scroll_thunder') {
+    valStr = `${item.value} ダメージ`;
+  } else {
+    valStr = 'なし / 特殊';
+  }
+  itemDetailValue.innerText = valStr;
+  
+  // Get sell price
+  const sellPrice = engine.getSellPrice(item);
+  itemDetailPrice.innerText = `${sellPrice} G`;
+  
+  itemDetailDesc.innerText = item.description;
+  
+  // Set use button text
+  const isEquip = item.type === 'weapon_sword' || item.type === 'armor_shield';
+  itemDetailUseBtn.innerText = isEquip ? '装備する' : '使う';
+  
+  // Show modal
+  itemDetailModal.classList.remove('hidden');
+}
+
+function closeItemDetail() {
+  itemDetailModal.classList.add('hidden');
+  selectedInventoryIndex = -1;
+}
+
+function openHelp() {
+  helpModal.classList.remove('hidden');
+}
+
+function closeHelp() {
+  helpModal.classList.add('hidden');
+}
+
+function toggleHelp() {
+  if (helpModal.classList.contains('hidden')) {
+    openHelp();
+  } else {
+    closeHelp();
+  }
+}
+
+const prologueStoryText = `―― 人類の英知を超えた生成AIが創り出せし深淵の迷宮。
+その地下10階の底には、世界のすべてを知るという
+伝説の「生成AIの秘宝」が眠ると伝えられている。
+
+多くの冒険者たちが秘宝を求めて迷宮に挑むも、
+凶悪なモンスターと「邪教の心眼」の前に散っていった。
+
+いま、一人の勇者が覚悟を決め、迷宮の扉を開く ――`;
+
+function startPrologue() {
+  if (prologueText) {
+    prologueText.innerHTML = '';
+  }
+  isPrologueActive = true;
+  startGameBtn.classList.add('hidden');
+  skipPrologueBtn.classList.remove('hidden');
+  
+  let charIndex = 0;
+  
+  function typeNextChar() {
+    if (!isPrologueActive) return;
+    if (charIndex < prologueStoryText.length) {
+      const char = prologueStoryText[charIndex];
+      if (char === '\n') {
+        prologueText.innerHTML += '<br>';
+      } else {
+        prologueText.innerHTML += char;
+      }
+      charIndex++;
+      
+      // Play a short retro beep for letters, ignoring spaces and linebreaks
+      if (char !== ' ' && char !== '\n' && char !== '　') {
+        soundEffects.playTyping();
+      }
+      
+      // Pacing delay (shorter for letters, longer for punctuation/newlines)
+      let delay = 50;
+      if (char === '。' || char === '！' || char === '？') {
+        delay = 450;
+      } else if (char === '、' || char === 'ー' || char === '\n') {
+        delay = 250;
+      }
+      
+      prologueTimer = setTimeout(typeNextChar, delay);
+    } else {
+      finishPrologue();
+    }
+  }
+  
+  typeNextChar();
+}
+
+function finishPrologue() {
+  isPrologueActive = false;
+  if (prologueTimer) {
+    clearTimeout(prologueTimer);
+    prologueTimer = null;
+  }
+  // Replace line breaks with HTML line breaks
+  prologueText.innerHTML = prologueStoryText.replace(/\n/g, '<br>');
+  
+  startGameBtn.classList.remove('hidden');
+  skipPrologueBtn.classList.add('hidden');
+  
+  // Focus the start game button so that pressing Enter acts immediately
+  startGameBtn.focus();
+}
+
+function skipPrologue() {
+  finishPrologue();
+}
+
+
