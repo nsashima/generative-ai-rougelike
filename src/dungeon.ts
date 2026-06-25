@@ -217,7 +217,7 @@ export function generateDungeon(level: number, width: number, height: number): {
         let name = 'ゴールド';
         let symbol = '$';
         let color = '#fbbf24';
-        let value = randomRange(3, 8) * level; // reduced gold value to balance economy
+        let value = randomRange(4, 11) * level; // adjusted gold value to balance economy
         let description = `${value}ゴールドが入っている。`;
         let itemDurability: number | undefined = undefined;
 
