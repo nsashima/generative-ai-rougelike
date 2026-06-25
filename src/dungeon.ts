@@ -546,11 +546,12 @@ export function generateDungeon(level: number, width: number, height: number): {
     const rareName = isGold ? 'ゴールデンスライム' : 'シルバースライム';
     const rareColor = isGold ? '#facc15' : '#cbd5e1'; // Gold and Silver/Slate colors
     
-    // Stats: high HP and Def, moderate attack, scaled by level
-    const rareHp = 15 + level * 8;
-    const rareAtt = 3 + level * 2;
-    const rareDef = isGold ? (3 + level * 2) : (5 + level * 2.5); // Silver has higher defense
-    const rareXp = isGold ? (15 + level * 5) : (100 + level * 50); // Silver slime gives massive XP
+    // Stats: Low HP and Attack so they are easy to defeat bonus targets.
+    // Golden Slime has low defense, Silver Slime has slightly higher defense but very low HP.
+    const rareHp = isGold ? (6 + level * 2) : (4 + level * 1);
+    const rareAtt = 1 + Math.floor(level * 0.5);
+    const rareDef = isGold ? (1 + Math.floor(level * 0.5)) : (2 + level * 1);
+    const rareXp = isGold ? (15 + level * 5) : (100 + level * 50); // Keep the high XP reward
 
     // Find a free spot on floor
     const floorTiles: { x: number; y: number }[] = [];
