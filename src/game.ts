@@ -206,10 +206,10 @@ export class GameEngine {
       }
     }
 
-    // Give Gold (Reduced to balance starting economy)
+    // Give Gold (Adjusted to allow reasonable shopping while maintaining balance)
     const goldGained = (enemy.type === 'dragon' || enemy.type === 'demon_king')
-      ? Math.floor(60 + Math.random() * 30) // Was 100-150 G
-      : Math.floor((enemy.xpValue * 0.08) + Math.random() * (enemy.xpValue * 0.08) + 1); // Was 0.15 * xp
+      ? Math.floor(80 + Math.random() * 40) // Was 100-150 G, then 60-90 G
+      : Math.floor((enemy.xpValue * 0.11) + Math.random() * (enemy.xpValue * 0.11) + 1); // Was 0.15 * xp, then 0.08 * xp
     
     this.state.gold += goldGained;
     this.addMessage(`${goldGained} ゴールドを獲得した。`);
