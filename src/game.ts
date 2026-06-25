@@ -744,6 +744,19 @@ export class GameEngine {
     soundEffects.playGold();
   }
 
+  // Swap two inventory items for sorting
+  swapInventoryItems(index1: number, index2: number) {
+    if (index1 < 0 || index1 >= this.state.inventory.length) return;
+    if (index2 < 0 || index2 >= this.state.inventory.length) return;
+    if (index1 === index2) return;
+
+    const temp = this.state.inventory[index1];
+    this.state.inventory[index1] = this.state.inventory[index2];
+    this.state.inventory[index2] = temp;
+    
+    soundEffects.playGold();
+  }
+
   // Shop navigation states
   public shopActiveTab: 'buy' | 'sell' = 'buy';
   public shopSelectedIndex: number = 0;
