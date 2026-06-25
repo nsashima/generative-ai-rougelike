@@ -538,6 +538,58 @@ export function generateDungeon(level: number, width: number, height: number): {
     }
   }
 
+  // Rare monster spawn (5% Golden Slime, 5% Silver Slime, max 1 per floor)
+  const rareRoll = Math.random();
+  if (rareRoll < 0.10) {
+    const isGold = rareRoll < 0.05;
+    const rareType: EntityType = isGold ? 'golden_slime' : 'silver_slime';
+    const rareName = isGold ? 'ゴールデンスライム' : 'シルバースライム';
+    const rareColor = isGold ? '#facc15' : '#cbd5e1'; // Gold and Silver/Slate colors
+    
+    // Stats: Low HP and Attack so they are easy to defeat bonus targets.
+    // Golden Slime has low defense, Silver Slime has slightly higher defense but very low HP.
+    const rareHp = isGold ? (6 + level * 2) : (4 + level * 1);
+    const rareAtt = 1 + Math.floor(level * 0.5);
+    const rareDef = isGold ? (1 + Math.floor(level * 0.5)) : (2 + level * 1);
+    const rareXp = isGold ? (15 + level * 5) : (100 + level * 50); // Keep the high XP reward
+
+    // Find a free spot on floor
+    const floorTiles: { x: number; y: number }[] = [];
+    const mapWidth = tiles.length;
+    const mapHeight = tiles[0].length;
+    for (let x = 0; x < mapWidth; x++) {
+      for (let y = 0; y < mapHeight; y++) {
+        if (tiles[x][y].type === 'floor') {
+          const isPlayerStart = x === playerStart.x && y === playerStart.y;
+          const hasEnemy = enemies.some(e => e.x === x && e.y === y);
+          const hasItem = items.some(i => i.x === x && i.y === y);
+          if (!isPlayerStart && !hasEnemy && !hasItem) {
+            floorTiles.push({ x, y });
+          }
+        }
+      }
+    }
+    
+    if (floorTiles.length > 0) {
+      const spot = floorTiles[randomRange(0, floorTiles.length - 1)];
+      enemies.push({
+        id: uuid(),
+        x: spot.x,
+        y: spot.y,
+        type: rareType,
+        name: rareName,
+        hp: rareHp,
+        maxHp: rareHp,
+        att: rareAtt,
+        def: rareDef,
+        xpValue: rareXp,
+        level,
+        symbol: 's',
+        color: rareColor
+      });
+    }
+  }
+
   return {
     tiles,
     playerStart,

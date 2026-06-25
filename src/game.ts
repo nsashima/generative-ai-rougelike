@@ -207,9 +207,16 @@ export class GameEngine {
     }
 
     // Give Gold (Adjusted to allow reasonable shopping while maintaining balance)
-    const goldGained = (enemy.type === 'dragon' || enemy.type === 'demon_king')
-      ? Math.floor(80 + Math.random() * 40) // Was 100-150 G, then 60-90 G
-      : Math.floor((enemy.xpValue * 0.11) + Math.random() * (enemy.xpValue * 0.11) + 1); // Was 0.15 * xp, then 0.08 * xp
+    let goldGained = 0;
+    if (enemy.type === 'dragon' || enemy.type === 'demon_king') {
+      goldGained = Math.floor(80 + Math.random() * 40); // Boss: 80-120 G
+    } else if (enemy.type === 'golden_slime') {
+      goldGained = Math.floor(35 + enemy.level * 5 + Math.random() * 15); // Golden Slime:相当多め (e.g. Level 1: 40-55 G)
+    } else if (enemy.type === 'silver_slime') {
+      goldGained = Math.floor(2 + enemy.level * 0.5 + Math.random() * 3); // Silver Slime: 経験値は多いがゴールドは少なめ
+    } else {
+      goldGained = Math.floor((enemy.xpValue * 0.11) + Math.random() * (enemy.xpValue * 0.11) + 1);
+    }
     
     this.state.gold += goldGained;
     this.addMessage(`${goldGained} ゴールドを獲得した。`);
@@ -734,6 +741,19 @@ export class GameEngine {
     // Remove from inventory
     this.state.inventory.splice(index, 1);
     this.addMessage(`${item.name} を足元に置いた。`);
+    soundEffects.playGold();
+  }
+
+  // Swap two inventory items for sorting
+  swapInventoryItems(index1: number, index2: number) {
+    if (index1 < 0 || index1 >= this.state.inventory.length) return;
+    if (index2 < 0 || index2 >= this.state.inventory.length) return;
+    if (index1 === index2) return;
+
+    const temp = this.state.inventory[index1];
+    this.state.inventory[index1] = this.state.inventory[index2];
+    this.state.inventory[index2] = temp;
+    
     soundEffects.playGold();
   }
 

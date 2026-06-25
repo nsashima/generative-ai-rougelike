@@ -34,7 +34,7 @@ export interface Item {
   maxDurability?: number;
 }
 
-export type EntityType = 'player' | 'slime' | 'goblin' | 'skeleton' | 'golem' | 'dragon' | 'merchant' | 'hellhound' | 'vampire' | 'demon' | 'archdemon' | 'demon_king';
+export type EntityType = 'player' | 'slime' | 'golden_slime' | 'silver_slime' | 'goblin' | 'skeleton' | 'golem' | 'dragon' | 'merchant' | 'hellhound' | 'vampire' | 'demon' | 'archdemon' | 'demon_king';
 
 export interface Entity {
   id: string;

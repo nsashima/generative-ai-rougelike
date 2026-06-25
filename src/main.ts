@@ -92,6 +92,7 @@ let itemDetailValue: HTMLElement;
 let itemDetailPrice: HTMLElement;
 let itemDetailDesc: HTMLElement;
 let selectedInventoryIndex: number = -1;
+let selectedSortIndex: number = -1;
 let selectedItemDetailType: 'inventory' | 'weapon' | 'armor' = 'inventory';
 
 // Help elements
@@ -461,7 +462,20 @@ function setupEvents() {
       const digit = digitMatch[1];
       const slotNum = digit === '0' ? 9 : parseInt(digit) - 1;
       if (slotNum < engine.state.inventory.length) {
-        if (e.altKey) {
+        if (e.ctrlKey) {
+          e.preventDefault();
+          if (selectedSortIndex === slotNum) {
+            selectedSortIndex = -1;
+            engine.addMessage('並べ替えの選択を解除した。');
+          } else if (selectedSortIndex !== -1) {
+            engine.swapInventoryItems(selectedSortIndex, slotNum);
+            engine.addMessage('アイテムを並べ替えた。');
+            selectedSortIndex = -1;
+          } else {
+            selectedSortIndex = slotNum;
+            engine.addMessage(`${slotNum + 1}番目のアイテムを選択した。並び替え先を Ctrl + 数字キー で選択してください。`);
+          }
+        } else if (e.altKey) {
           e.preventDefault();
           openItemDetail(slotNum);
         } else if (e.shiftKey) {
@@ -729,6 +743,62 @@ function updateHUD() {
     const li = document.createElement('li');
     li.className = 'inventory-item';
     
+    // Highlight selection during sorting
+    if (index === selectedSortIndex) {
+      li.style.border = '1px dashed #eab308';
+      li.style.backgroundColor = 'rgba(234, 179, 8, 0.15)';
+      li.style.boxShadow = '0 0 8px rgba(234, 179, 8, 0.2)';
+    }
+
+    // Move Up/Down buttons for sorting (mouse controls)
+    const sortControls = document.createElement('div');
+    sortControls.className = 'item-sort-controls';
+    sortControls.style.display = 'flex';
+    sortControls.style.flexDirection = 'column';
+    sortControls.style.marginRight = '0.35rem';
+    sortControls.style.gap = '2px';
+
+    const sortUpBtn = document.createElement('button');
+    sortUpBtn.style.padding = '0';
+    sortUpBtn.style.width = '16px';
+    sortUpBtn.style.height = '14px';
+    sortUpBtn.style.fontSize = '8px';
+    sortUpBtn.style.lineHeight = '1';
+    sortUpBtn.style.border = '1px solid rgba(255,255,255,0.08)';
+    sortUpBtn.style.backgroundColor = 'rgba(255,255,255,0.04)';
+    sortUpBtn.style.color = 'var(--text-muted)';
+    sortUpBtn.style.cursor = 'pointer';
+    sortUpBtn.style.borderRadius = '2px';
+    sortUpBtn.innerText = '▲';
+    sortUpBtn.disabled = index === 0;
+    sortUpBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      engine.swapInventoryItems(index, index - 1);
+      updateHUD();
+    });
+
+    const sortDownBtn = document.createElement('button');
+    sortDownBtn.style.padding = '0';
+    sortDownBtn.style.width = '16px';
+    sortDownBtn.style.height = '14px';
+    sortDownBtn.style.fontSize = '8px';
+    sortDownBtn.style.lineHeight = '1';
+    sortDownBtn.style.border = '1px solid rgba(255,255,255,0.08)';
+    sortDownBtn.style.backgroundColor = 'rgba(255,255,255,0.04)';
+    sortDownBtn.style.color = 'var(--text-muted)';
+    sortDownBtn.style.cursor = 'pointer';
+    sortDownBtn.style.borderRadius = '2px';
+    sortDownBtn.innerText = '▼';
+    sortDownBtn.disabled = index === state.inventory.length - 1;
+    sortDownBtn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      engine.swapInventoryItems(index, index + 1);
+      updateHUD();
+    });
+
+    sortControls.appendChild(sortUpBtn);
+    sortControls.appendChild(sortDownBtn);
+    
     // Create inner structure
     const infoDiv = document.createElement('div');
     infoDiv.className = 'item-info';
@@ -788,6 +858,7 @@ function updateHUD() {
     actionsDiv.appendChild(inspectBtn);
     actionsDiv.appendChild(dropBtn);
 
+    li.appendChild(sortControls);
     li.appendChild(infoDiv);
     li.appendChild(actionsDiv);
     
