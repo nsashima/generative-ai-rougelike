@@ -217,8 +217,9 @@ export function generateDungeon(level: number, width: number, height: number): {
         let name = 'ゴールド';
         let symbol = '$';
         let color = '#fbbf24';
-        let value = randomRange(5, 15) * level; // reduced gold value to balance economy
+        let value = randomRange(3, 8) * level; // reduced gold value to balance economy
         let description = `${value}ゴールドが入っている。`;
+        let itemDurability: number | undefined = undefined;
 
         if (itemTypeChance < 0.25) {
           // Gold (default values already set)
@@ -266,7 +267,8 @@ export function generateDungeon(level: number, width: number, height: number): {
           name = weaponNames[idx];
           color = weaponColors[idx];
           symbol = '/';
-          value = Math.floor(2 + level * 2.0); // weapon power
+          value = Math.floor(2 + level * 1.3); // reduced weapon power (was 2 + level * 2.0)
+          itemDurability = randomRange(12, 20) + level * 2;
           description = `攻撃力が ${value} 上がる武器。`;
         } else if (itemTypeChance < 0.88) {
           type = 'armor_shield';
@@ -298,7 +300,8 @@ export function generateDungeon(level: number, width: number, height: number): {
           name = armorNames[idx];
           color = armorColors[idx];
           symbol = '[';
-          value = Math.floor(1 + level * 1.5); // armor power
+          value = Math.floor(1 + level * 0.9); // reduced armor power (was 1 + level * 1.5)
+          itemDurability = randomRange(12, 20) + level * 2;
           description = `防御力が ${value} 上がる防具。`;
         } else {
           // scrolls
@@ -350,7 +353,9 @@ export function generateDungeon(level: number, width: number, height: number): {
           value,
           description,
           symbol,
-          color
+          color,
+          durability: itemDurability,
+          maxDurability: itemDurability
         });
       }
     }
@@ -414,17 +419,21 @@ export function generateDungeon(level: number, width: number, height: number): {
       height: 2
     });
 
-    items.push({
-      id: uuid(),
-      x: bossX,
-      y: Math.max(1, bossY - 1),
-      type: 'armor_shield',
-      name: 'キングの盾 (King\'s Shield)',
-      symbol: '[',
-      color: '#fbbf24',
-      value: 12,
-      description: 'ゴブリンキングが守っていた、比類なき堅牢さを誇る金色の盾。'
-    });
+    if (Math.random() < 0.5) {
+      items.push({
+        id: uuid(),
+        x: bossX,
+        y: Math.max(1, bossY - 1),
+        type: 'armor_shield',
+        name: 'キングの盾 (King\'s Shield)',
+        symbol: '[',
+        color: '#fbbf24',
+        value: 8,
+        description: 'ゴブリンキングが守っていた、比類なき堅牢さを誇る金色の盾。',
+        durability: 45,
+        maxDurability: 45
+      });
+    }
   }
 
   // 8. LEVEL 10 FINAL BOSS: Demon King Sashima
@@ -483,7 +492,7 @@ export function generateDungeon(level: number, width: number, height: number): {
       const isPlayerStart = gx === playerStart.x && gy === playerStart.y;
       
       if (!occupiedByEnemy && !occupiedByItem && !isPlayerStart && tiles[gx]?.[gy]?.type === 'floor') {
-        const val = randomRange(10, 25) * level;
+        const val = randomRange(5, 12) * level;
         items.push({
           id: uuid(),
           x: gx,
@@ -506,7 +515,7 @@ export function generateDungeon(level: number, width: number, height: number): {
           for (let ry = room.y; ry < room.y + room.h; ry++) {
             const occupied = items.some(i => i.x === rx && i.y === ry) || enemies.some(e => e.x === rx && e.y === ry) || (rx === playerStart.x && ry === playerStart.y);
             if (!occupied && tiles[rx]?.[ry]?.type === 'floor') {
-              const val = randomRange(10, 25) * level;
+              const val = randomRange(5, 12) * level;
               items.push({
                 id: uuid(),
                 x: rx,

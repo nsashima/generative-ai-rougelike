@@ -12,6 +12,7 @@ export class GameEngine {
   public equippedWeapon: Item | null = null;
   public equippedArmor: Item | null = null;
   public debugAllVisible: boolean = false;
+  public currentShopItems: any[] | null = null;
 
   constructor() {
     this.reset();
@@ -31,7 +32,7 @@ export class GameEngine {
       xpValue: 0,
       level: 1,
       xp: 0,
-      maxXp: 30,
+      maxXp: 40, // Increased from 30 to make early game slightly harder
       symbol: '@',
       color: '#38bdf8' // Sky blue
     };
@@ -39,6 +40,7 @@ export class GameEngine {
     this.equippedWeapon = null;
     this.equippedArmor = null;
     this.debugAllVisible = false;
+    this.currentShopItems = null;
 
     this.state = {
       dungeonLevel: 1,
@@ -76,6 +78,7 @@ export class GameEngine {
 
   loadLevel(level: number) {
     this.state.dungeonLevel = level;
+    this.currentShopItems = null; // Clear shop inventory for the new floor
     
     // Generate layout
     const dungeon = generateDungeon(level, this.state.width, this.state.height);
@@ -170,6 +173,18 @@ export class GameEngine {
     this.spawnParticle(enemy.x, enemy.y, '#ef4444', 12, `-${damage}`);
     soundEffects.playEnemyHit();
 
+    // Decrease weapon durability
+    if (this.equippedWeapon) {
+      if (this.equippedWeapon.durability !== undefined) {
+        this.equippedWeapon.durability--;
+        if (this.equippedWeapon.durability <= 0) {
+          this.addMessage(`【破損】${this.equippedWeapon.name} が壊れて消滅してしまった！`);
+          this.equippedWeapon = null;
+          soundEffects.playDeath(); // play crash/shatter sound
+        }
+      }
+    }
+
     if (enemy.hp <= 0) {
       this.defeatEnemy(enemy);
     }
@@ -193,8 +208,8 @@ export class GameEngine {
 
     // Give Gold (Reduced to balance starting economy)
     const goldGained = (enemy.type === 'dragon' || enemy.type === 'demon_king')
-      ? Math.floor(100 + Math.random() * 50) 
-      : Math.floor((enemy.xpValue * 0.15) + Math.random() * (enemy.xpValue * 0.15) + 1);
+      ? Math.floor(60 + Math.random() * 30) // Was 100-150 G
+      : Math.floor((enemy.xpValue * 0.08) + Math.random() * (enemy.xpValue * 0.08) + 1); // Was 0.15 * xp
     
     this.state.gold += goldGained;
     this.addMessage(`${goldGained} ゴールドを獲得した。`);
@@ -223,13 +238,13 @@ export class GameEngine {
     player.level += 1;
     if (player.xp !== undefined && player.maxXp !== undefined) {
       player.xp -= player.maxXp;
-      player.maxXp = Math.floor(player.maxXp * 1.55); // slightly more XP needed
+      player.maxXp = Math.floor(player.maxXp * 1.70); // more XP needed (was 1.55)
     }
     
     player.maxHp = Math.floor(player.maxHp * 1.15) + 4;
     const healAmt = Math.floor(player.maxHp * 0.40);
     player.hp = Math.min(player.maxHp, player.hp + healAmt);
-    player.att += 2;
+    player.att += 1; // reduced from 2 to slow scaling
     player.def += 1;
 
     this.addMessage(`【レベルアップ】レベル ${player.level} に上がった！ HPが ${healAmt} 回復し、ステータスが上昇した。`);
@@ -365,6 +380,18 @@ export class GameEngine {
     this.addMessage(`${enemy.name}から ${damage} のダメージを受けた！`);
     this.spawnParticle(player.x, player.y, '#e11d48', 8, `-${damage}`);
     soundEffects.playHit();
+
+    // Decrease armor durability
+    if (this.equippedArmor) {
+      if (this.equippedArmor.durability !== undefined) {
+        this.equippedArmor.durability--;
+        if (this.equippedArmor.durability <= 0) {
+          this.addMessage(`【破損】${this.equippedArmor.name} が壊れて消滅してしまった！`);
+          this.equippedArmor = null;
+          soundEffects.playDeath(); // play crash/shatter sound
+        }
+      }
+    }
 
     if (player.hp <= 0) {
       player.hp = 0;
@@ -729,6 +756,10 @@ export class GameEngine {
   }
 
   getShopItems() {
+    if (this.currentShopItems) {
+      return this.currentShopItems;
+    }
+
     const level = this.state.dungeonLevel;
     
     // Weapon details matching dungeon levels 1-10
@@ -751,7 +782,8 @@ export class GameEngine {
     const wIdx = Math.max(0, Math.min(level - 1, 9));
     const weaponName = weaponNames[wIdx];
     const weaponColor = weaponColors[wIdx];
-    const weaponValue = Math.floor(2 + level * 2.0);
+    const weaponValue = Math.floor(2 + level * 1.3); // Reduced power (was 2 + level * 2.0)
+    const weaponDurability = 15 + level * 2;
 
     // Armor details matching dungeon levels 1-10
     const armorNames = [
@@ -773,80 +805,94 @@ export class GameEngine {
     const aIdx = Math.max(0, Math.min(level - 1, 9));
     const armorName = armorNames[aIdx];
     const armorColor = armorColors[aIdx];
-    const armorValue = Math.floor(1 + level * 1.5);
+    const armorValue = Math.floor(1 + level * 0.9); // Reduced power (was 1 + level * 1.5)
+    const armorDurability = 15 + level * 2;
 
     const items = [
       {
         id: 'shop_potion_heal',
         name: '回復薬',
-        price: 40,
+        price: 60, // Increased price
         description: 'HPを最大値の40%回復する。',
         type: 'potion_heal',
         symbol: '!',
         color: '#ef4444',
-        value: 40
+        value: 40,
+        stock: 2 // Stock limit
       },
       {
         id: 'shop_potion_strength',
         name: '力増強の薬',
-        price: 80,
+        price: 130, // Increased price
         description: '攻撃力を永久に 1 上昇させる。',
         type: 'potion_strength',
         symbol: '!',
         color: '#3b82f6',
-        value: 1
+        value: 1,
+        stock: 1 // Stock limit
       },
       {
         id: 'shop_scroll_fireball',
         name: '火炎球の巻物',
-        price: 60,
+        price: 75, // Increased price
         description: `最も近い敵に ${20 + level * 5} ダメージ。`,
         type: 'scroll_fireball',
         symbol: '?',
         color: '#f97316',
-        value: 20 + level * 5
+        value: 20 + level * 5,
+        stock: 1
       },
       {
         id: 'shop_scroll_sleep',
         name: '眠りの巻物',
-        price: 50,
+        price: 60, // Increased price
         description: '周囲の敵を数ターンの間眠らせる。',
         type: 'scroll_sleep',
         symbol: '?',
         color: '#38bdf8',
-        value: 0
+        value: 0,
+        stock: 1
       },
       {
         id: 'shop_scroll_mapping',
         name: '千里眼の巻物',
-        price: 40,
+        price: 50, // Increased price
         description: 'フロア全体のマップを明らかにする。',
         type: 'scroll_mapping',
         symbol: '?',
         color: '#10b981',
-        value: 0
+        value: 0,
+        stock: 1
       },
       {
         id: 'shop_weapon',
         name: weaponName,
-        price: level * 50,
-        description: `攻撃力が ${weaponValue} 上がる強力な武器。`,
+        price: level * 75, // Increased price (was level * 50)
+        description: `攻撃力が ${weaponValue} 上がる強力な武器。(耐久: ${weaponDurability}/${weaponDurability})`,
         type: 'weapon_sword',
         symbol: '/',
         color: weaponColor,
-        value: weaponValue
+        value: weaponValue,
+        durability: weaponDurability,
+        maxDurability: weaponDurability,
+        stock: 1
       },
       {
         id: 'shop_armor',
         name: armorName,
-        price: level * 40,
-        description: `防御力が ${armorValue} 上がる強力な防具。`,
+        price: level * 60, // Increased price (was level * 40)
+        description: `防御力が ${armorValue} 上がる強力な防具。(耐久: ${armorDurability}/${armorDurability})`,
         type: 'armor_shield',
         symbol: '[',
         color: armorColor,
-        value: armorValue
+        value: armorValue,
+        durability: armorDurability,
+        maxDurability: armorDurability,
+        stock: 1
       }
     ];
+
+    this.currentShopItems = items;
     return items;
   }
 
@@ -854,6 +900,11 @@ export class GameEngine {
     const shopItems = this.getShopItems();
     const item = shopItems.find(i => i.id === itemId);
     if (!item) return false;
+
+    if (item.stock <= 0) {
+      this.addMessage('「おっと、そいつは売り切れだよ。」');
+      return false;
+    }
 
     if (this.state.gold < item.price) {
       this.addMessage('「おっと、ゴールドが足りないよ。」');
@@ -866,9 +917,10 @@ export class GameEngine {
     }
 
     this.state.gold -= item.price;
+    item.stock--; // Reduce stock
     
     // Add to inventory
-    const mapItem = {
+    const mapItem: Item = {
       id: Math.random().toString(36).substring(2, 9),
       x: 0,
       y: 0,
@@ -877,7 +929,9 @@ export class GameEngine {
       value: item.value,
       description: item.description,
       symbol: item.symbol,
-      color: item.color
+      color: item.color,
+      durability: item.durability,
+      maxDurability: item.maxDurability
     };
     
     this.state.inventory.push(mapItem);
@@ -936,6 +990,28 @@ export class GameEngine {
     soundEffects.playGold();
 
     window.dispatchEvent(new CustomEvent('shop-updated'));
+    return true;
+  }
+
+  unequipItem(type: 'weapon' | 'armor'): boolean {
+    if (this.state.status !== 'playing') return false;
+    const item = type === 'weapon' ? this.equippedWeapon : this.equippedArmor;
+    if (!item) return false;
+
+    if (this.state.inventory.length >= 10) {
+      this.addMessage('荷物がいっぱいで装備を外せない！');
+      return false;
+    }
+
+    if (type === 'weapon') {
+      this.equippedWeapon = null;
+    } else {
+      this.equippedArmor = null;
+    }
+
+    this.state.inventory.push(item);
+    this.addMessage(`${item.name} を装備から外した。`);
+    soundEffects.playGold();
     return true;
   }
 }
