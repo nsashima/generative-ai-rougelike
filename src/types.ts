@@ -17,7 +17,8 @@ export type ItemType =
   | 'scroll_fireball' 
   | 'scroll_sleep'
   | 'scroll_thunder'
-  | 'scroll_mapping'
+  | 'scroll_repair'
+  | 'scroll_drain'
   | 'gold';
 
 export interface Item {
