@@ -2,8 +2,8 @@ import { GameState, Entity, Item } from './types';
 import { generateDungeon, computeFOV } from './dungeon';
 import { soundEffects } from './sound';
 
-const DUNGEON_WIDTH = 45;
-const DUNGEON_HEIGHT = 30;
+const DUNGEON_WIDTH = 40;
+const DUNGEON_HEIGHT = 25;
 
 export class GameEngine {
   public state!: GameState;
@@ -169,16 +169,6 @@ export class GameEngine {
         this.levelUp();
       }
     }
-
-    // Give Gold
-    const goldGained = enemy.type === 'dragon' 
-      ? Math.floor(150 + Math.random() * 100) 
-      : Math.floor((enemy.xpValue * 0.6) + Math.random() * (enemy.xpValue * 0.4) + 1);
-    
-    this.state.gold += goldGained;
-    this.addMessage(`${goldGained} ゴールドを獲得した。`);
-    this.spawnParticle(enemy.x, enemy.y, '#eab308', 8, `+${goldGained} G`);
-    soundEffects.playGold();
 
     // Check if the defeated enemy is the Dragon (Boss)
     if (enemy.type === 'dragon') {
@@ -544,14 +534,8 @@ export class GameEngine {
     soundEffects.playGold();
   }
 
-  // Shop navigation states
-  public shopActiveTab: 'buy' | 'sell' = 'buy';
-  public shopSelectedIndex: number = 0;
-
   openShop() {
     this.state.status = 'shop';
-    this.shopActiveTab = 'buy';
-    this.shopSelectedIndex = 0;
     this.addMessage('「おや、旅のお人。良い品を揃えているよ。何が必要だい？」');
     window.dispatchEvent(new CustomEvent('shop-opened'));
   }
@@ -568,7 +552,7 @@ export class GameEngine {
       {
         id: 'shop_potion_heal',
         name: '回復薬',
-        price: 40,
+        price: 30,
         description: 'HPを最大値の40%回復する。',
         type: 'potion_heal',
         symbol: '!',
@@ -588,7 +572,7 @@ export class GameEngine {
       {
         id: 'shop_scroll_fireball',
         name: '火炎球の巻物',
-        price: 60,
+        price: 40,
         description: `最も近い敵に ${20 + level * 5} ダメージ。`,
         type: 'scroll_fireball',
         symbol: '?',
@@ -660,13 +644,13 @@ export class GameEngine {
   getSellPrice(item: Item): number {
     switch (item.type) {
       case 'potion_heal':
-        return 20;
+        return 15;
       case 'potion_strength':
         return 40;
       case 'scroll_fireball':
-        return 30;
+        return 20;
       case 'scroll_teleport':
-        return 30;
+        return 15;
       case 'weapon_sword':
         return item.value * 8;
       case 'armor_shield':

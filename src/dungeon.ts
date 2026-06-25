@@ -35,13 +35,11 @@ export function generateDungeon(level: number, width: number, height: number): {
 
   const rooms: Room[] = [];
   const minRoomSize = 6;
-  const maxRoomSize = 15;
-  const targetRooms = randomRange(4, 6);
+  const maxRoomSize = 12;
+  const maxRooms = 15;
 
   // 2. Generate rooms
-  for (let i = 0; i < 100; i++) {
-    if (rooms.length >= targetRooms) break;
-
+  for (let i = 0; i < maxRooms; i++) {
     const w = randomRange(minRoomSize, maxRoomSize);
     const h = randomRange(minRoomSize, maxRoomSize);
     const x = randomRange(1, width - w - 2);
@@ -147,12 +145,8 @@ export function generateDungeon(level: number, width: number, height: number): {
   for (let r = 1; r < rooms.length; r++) {
     const room = rooms[r];
 
-    // Spawn enemies based on room area. (Larger rooms get more enemies)
-    // Area ranges from 36 (6x6) to 225 (15x15) tiles.
-    // We target roughly 1 enemy per 30 tiles, clamped between 1 and 5.
-    const roomArea = room.w * room.h;
-    const baseEnemies = Math.floor(roomArea / 30);
-    const enemyCount = Math.max(1, Math.min(5, baseEnemies + randomRange(0, 1)));
+    // Spawn enemies (1-3 per room)
+    const enemyCount = randomRange(1, 3);
     for (let e = 0; e < enemyCount; e++) {
       // Pick random floor tile in room
       const rx = randomRange(room.x, room.x + room.w - 1);
@@ -182,9 +176,8 @@ export function generateDungeon(level: number, width: number, height: number): {
       }
     }
 
-    // Spawn items based on room area. (Clamp between 1 and 3 items per room)
-    const baseItems = Math.floor(roomArea / 60);
-    const itemCount = Math.max(1, Math.min(3, baseItems + randomRange(0, 1)));
+    // Spawn items (0-2 per room)
+    const itemCount = randomRange(0, 2);
     for (let it = 0; it < itemCount; it++) {
       const rx = randomRange(room.x, room.x + room.w - 1);
       const ry = randomRange(room.y, room.y + room.h - 1);

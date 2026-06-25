@@ -162,40 +162,11 @@ export class DungeonRenderer {
       this.ctx.fillStyle = isVisible ? '#064e3b' : '#022c22'; // Emerald green theme
       this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
       
-      // Draw procedural stairs sprite
-      const stairsSprite = [
-        [0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,1,1,1,1],
-        [0,0,0,0,0,0,0,0,1,2,2,2],
-        [0,0,0,0,0,1,1,1,1,2,2,2],
-        [0,0,0,0,0,1,2,2,2,2,2,2],
-        [0,0,1,1,1,1,2,2,2,2,2,2],
-        [0,0,1,2,2,2,2,2,2,2,2,2],
-        [1,1,1,2,2,2,2,2,2,2,2,2],
-        [1,2,2,2,2,2,2,2,2,2,2,2],
-        [1,2,2,2,2,2,2,2,2,2,2,2],
-        [1,1,1,1,1,1,1,1,1,1,1,1],
-        [0,0,0,0,0,0,0,0,0,0,0,0]
-      ];
-      
-      const pixelSize = 3;
-      const startX = screenX + (this.tileSize - pixelSize * 12) / 2;
-      const startY = screenY + (this.tileSize - pixelSize * 12) / 2;
-      
-      const colors: { [key: number]: string } = {
-        1: isVisible ? '#047857' : '#022c22', // Green step outline
-        2: isVisible ? '#10b981' : '#064e3b'  // Green step surface
-      };
-      
-      for (let r = 0; r < 12; r++) {
-        for (let c = 0; c < 12; c++) {
-          const val = stairsSprite[r][c];
-          if (val !== 0) {
-            this.ctx.fillStyle = colors[val];
-            this.ctx.fillRect(startX + c * pixelSize, startY + r * pixelSize, pixelSize, pixelSize);
-          }
-        }
-      }
+      this.ctx.font = `bold 24px 'Outfit', 'Inter', monospace`;
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillStyle = isVisible ? '#10b981' : '#047857';
+      this.ctx.fillText('>', screenX + this.tileSize / 2, screenY + this.tileSize / 2);
       
       // Pulse animation around stairs
       if (isVisible) {
@@ -213,152 +184,33 @@ export class DungeonRenderer {
 
     // Glowing effect behind legendary item or gold
     const pulse = (Math.sin(this.pulseTime * 5) + 1) / 2;
-    if (item.name.includes('秘宝') || item.type === 'gold') {
+    if (item.name.includes('秘宝')) {
       const grad = this.ctx.createRadialGradient(
         screenX + this.tileSize / 2, screenY + this.tileSize / 2, 3,
-        screenX + this.tileSize / 2, screenY + this.tileSize / 2, this.tileSize * 1.0
+        screenX + this.tileSize / 2, screenY + this.tileSize / 2, this.tileSize * 1.2
       );
-      grad.addColorStop(0, item.type === 'gold' ? `rgba(234, 179, 8, ${0.3 + pulse * 0.25})` : `rgba(244, 63, 94, ${0.45 + pulse * 0.4})`);
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      grad.addColorStop(0, `rgba(244, 63, 94, ${0.45 + pulse * 0.4})`);
+      grad.addColorStop(1, 'rgba(244, 63, 94, 0)');
       this.ctx.fillStyle = grad;
       this.ctx.beginPath();
-      this.ctx.arc(screenX + this.tileSize / 2, screenY + this.tileSize / 2, this.tileSize * 1.0, 0, Math.PI * 2);
+      this.ctx.arc(screenX + this.tileSize / 2, screenY + this.tileSize / 2, this.tileSize * 1.2, 0, Math.PI * 2);
       this.ctx.fill();
     }
 
-    // Bobbing animation for the floating item
-    const bob = Math.floor(Math.sin(this.pulseTime * 3.5 + item.x) * 2);
-
-    // Sprites dictionary for items
-    let sprite: number[][] | null = null;
-    let colors: { [key: number]: string } = {};
-
-    if (item.type === 'gold') {
-      sprite = [
-        [0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,1,1,1,1,0,0,0,0],
-        [0,0,1,1,2,2,2,3,1,1,0,0],
-        [0,1,2,2,2,2,3,3,3,2,1,0],
-        [0,1,2,2,1,1,1,1,2,2,1,0],
-        [0,1,2,2,1,2,2,1,2,2,1,0],
-        [0,1,2,2,1,2,2,1,2,2,1,0],
-        [0,1,2,2,1,1,1,1,2,2,1,0],
-        [0,1,2,2,2,2,2,2,2,2,1,0],
-        [0,0,1,1,2,2,2,2,1,1,0,0],
-        [0,0,0,0,1,1,1,1,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0]
-      ];
-      colors = {
-        1: '#b45309', // Outline / shadow
-        2: '#facc15', // Base Gold Yellow
-        3: '#fef08a'  // Top-right metallic highlight
-      };
-    } else if (item.type === 'potion_heal' || item.type === 'potion_strength') {
-      sprite = [
-        [0,0,0,0,0,1,1,0,0,0,0,0],
-        [0,0,0,0,0,1,1,0,0,0,0,0],
-        [0,0,0,0,1,1,1,1,0,0,0,0],
-        [0,0,0,1,2,2,2,2,1,0,0,0],
-        [0,0,1,2,2,2,2,2,2,1,0,0],
-        [0,1,2,2,2,3,3,2,2,2,1,0],
-        [0,1,2,2,3,3,3,3,2,2,1,0],
-        [0,1,2,2,2,2,2,2,2,2,1,0],
-        [0,1,2,2,2,2,2,2,2,2,1,0],
-        [0,0,1,2,2,2,2,2,2,1,0,0],
-        [0,0,0,1,1,1,1,1,1,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0]
-      ];
-      colors = {
-        1: '#e2e8f0', // Glass border
-        2: item.type === 'potion_heal' ? '#ef4444' : '#3b82f6', // Red (heal) or Blue (strength)
-        3: '#ffffff'  // Shine highlight
-      };
-    } else if (item.type === 'scroll_teleport' || item.type === 'scroll_fireball') {
-      sprite = [
-        [0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [1,2,2,2,2,2,2,2,2,2,2,1],
-        [1,2,3,3,3,3,3,3,3,2,2,1],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [0,0,0,0,4,4,0,0,0,0,0,0],
-        [0,0,0,0,4,4,0,0,0,0,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [1,2,2,2,2,2,2,2,2,2,2,1],
-        [1,2,3,3,3,3,3,3,3,2,2,1],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0]
-      ];
-      colors = {
-        1: '#b45309', // Wooden end
-        2: '#fef3c7', // Aged paper
-        3: item.type === 'scroll_fireball' ? '#f97316' : '#8b5cf6', // Orange markings for fire, purple for teleport
-        4: item.type === 'scroll_fireball' ? '#ef4444' : '#3b82f6'  // Red ribbon / Blue ribbon
-      };
-    } else if (item.type === 'weapon_sword') {
-      sprite = [
-        [0,0,0,0,0,0,0,0,0,1,1,0],
-        [0,0,0,0,0,0,0,0,1,1,2,1],
-        [0,0,0,0,0,0,0,1,1,2,1,0],
-        [0,0,0,0,0,0,1,1,2,1,0,0],
-        [0,0,0,0,0,1,1,2,1,0,0,0],
-        [0,0,0,0,1,1,2,1,0,0,0,0],
-        [0,0,0,1,1,2,1,0,0,0,0,0],
-        [0,0,3,1,1,1,0,0,0,0,0,0],
-        [0,3,3,3,1,0,0,0,0,0,0,0],
-        [0,0,3,4,3,0,0,0,0,0,0,0],
-        [0,0,0,0,4,4,0,0,0,0,0,0],
-        [0,0,0,0,0,4,4,0,0,0,0,0]
-      ];
-      colors = {
-        1: '#cbd5e1', // Metal blade
-        2: '#ffffff', // Shine
-        3: '#fbbf24', // Golden crossguard
-        4: '#78350f'  // Leather hilt
-      };
-    } else if (item.type === 'armor_shield') {
-      sprite = [
-        [0,0,1,1,1,1,1,1,1,1,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [1,1,2,2,2,2,2,2,2,2,1,1],
-        [1,1,2,3,3,3,3,3,3,2,1,1],
-        [1,1,2,3,3,3,3,3,3,2,1,1],
-        [1,1,2,2,2,2,2,2,2,2,1,1],
-        [0,1,1,2,2,2,2,2,2,1,1,0],
-        [0,1,1,1,2,2,2,2,1,1,1,0],
-        [0,0,1,1,1,2,2,1,1,1,0,0],
-        [0,0,0,1,1,1,1,1,1,0,0,0],
-        [0,0,0,0,1,1,1,1,0,0,0,0],
-        [0,0,0,0,0,1,1,0,0,0,0,0]
-      ];
-      colors = {
-        1: '#94a3b8', // Steel rim
-        2: '#0ea5e9', // Blue field
-        3: '#fbbf24'  // Golden crown/emblem
-      };
-    }
-
-    if (sprite) {
-      const pixelSize = 3;
-      const startX = screenX + (this.tileSize - pixelSize * 12) / 2;
-      const startY = screenY + (this.tileSize - pixelSize * 12) / 2 + bob;
-
-      for (let r = 0; r < 12; r++) {
-        for (let c = 0; c < 12; c++) {
-          const val = sprite[r][c];
-          if (val !== 0) {
-            this.ctx.fillStyle = colors[val];
-            this.ctx.fillRect(startX + c * pixelSize, startY + r * pixelSize, pixelSize, pixelSize);
-          }
-        }
-      }
-    } else {
-      // Fallback
-      this.ctx.font = `bold 24px 'Outfit', 'Inter', monospace`;
-      this.ctx.textAlign = 'center';
-      this.ctx.textBaseline = 'middle';
-      this.ctx.fillStyle = item.color;
-      this.ctx.fillText(item.symbol, screenX + this.tileSize / 2, screenY + this.tileSize / 2 + bob);
-    }
+    // Draw item symbol (larger text sizing for tileSize=40)
+    this.ctx.font = `bold 24px 'Outfit', 'Inter', monospace`;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    
+    this.ctx.shadowColor = item.color;
+    this.ctx.shadowBlur = 10;
+    this.ctx.fillStyle = item.color;
+    
+    // Animate item position slightly (bobbing up and down)
+    const bob = Math.sin(this.pulseTime * 3 + item.x) * 3;
+    this.ctx.fillText(item.symbol, screenX + this.tileSize / 2, screenY + this.tileSize / 2 + bob);
+    
+    this.ctx.shadowBlur = 0;
   }
 
   private drawEnemy(enemy: Entity, cameraX: number, cameraY: number) {
@@ -368,15 +220,20 @@ export class DungeonRenderer {
     // Animated breathing/bouncing size based on type
     let breath = 0;
     if (enemy.type === 'slime') {
-      breath = Math.floor(Math.sin(this.pulseTime * 8) * 2);
+      breath = Math.sin(this.pulseTime * 8) * 2.5;
     } else {
-      breath = Math.floor(Math.sin(this.pulseTime * 4.5) * 1);
+      breath = Math.sin(this.pulseTime * 4) * 0.8;
     }
+
+    this.ctx.font = `bold 24px 'Outfit', 'Inter', monospace`;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
 
     // Highlight boss
     if (enemy.type === 'dragon') {
       this.ctx.shadowColor = enemy.color;
       this.ctx.shadowBlur = 16;
+      this.ctx.font = `bold 36px 'Outfit', 'Inter', monospace`;
       
       const pulse = (Math.sin(this.pulseTime * 6) + 1) / 2;
       const grad = this.ctx.createRadialGradient(
@@ -391,165 +248,14 @@ export class DungeonRenderer {
       this.ctx.fill();
     }
 
-    // Sprites dictionary for enemies
-    let sprite: number[][] | null = null;
-    let colors: { [key: number]: string } = {};
-
-    if (enemy.type === 'slime') {
-      sprite = [
-        [0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,1,1,1,1,0,0,0,0],
-        [0,0,0,1,1,1,1,1,1,0,0,0],
-        [0,0,1,1,1,1,1,1,1,1,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [0,1,2,1,1,1,1,1,2,1,1,0],
-        [1,1,2,2,1,1,1,2,2,1,1,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1],
-        [0,1,1,1,1,1,1,1,1,1,1,0]
-      ];
-      colors = {
-        1: enemy.color, // Green / blue slime
-        2: '#ffffff'    // Eyes
-      };
-    } else if (enemy.type === 'goblin') {
-      sprite = [
-        [0,0,0,0,1,1,1,1,0,0,0,0],
-        [0,0,1,1,1,1,1,1,1,1,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [1,1,1,2,1,1,1,1,2,1,1,1],
-        [1,0,1,1,3,3,3,3,1,1,0,1],
-        [0,0,1,1,1,3,3,1,1,1,0,0],
-        [0,0,0,1,4,4,4,4,1,0,0,0],
-        [0,0,0,4,4,4,4,4,4,0,0,0],
-        [0,0,4,4,4,4,4,4,4,4,0,0],
-        [0,0,4,4,5,4,4,5,4,4,0,0],
-        [0,0,0,5,5,0,0,5,5,0,0,0],
-        [0,0,5,5,0,0,0,0,5,5,0,0]
-      ];
-      colors = {
-        1: '#84cc16', // Goblin green skin
-        2: '#ef4444', // Red eye
-        3: '#4d7c0f', // Mouth shadow
-        4: '#78350f', // Brown tunic
-        5: '#451a03'  // Dark shoes
-      };
-    } else if (enemy.type === 'skeleton') {
-      sprite = [
-        [0,0,0,1,1,1,1,1,1,0,0,0],
-        [0,0,1,1,1,1,1,1,1,1,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [0,1,2,2,1,1,1,1,2,2,1,0],
-        [0,1,2,2,1,1,1,1,2,2,1,0],
-        [0,0,1,1,1,3,3,1,1,1,0,0],
-        [0,0,0,0,1,1,1,1,0,0,0,0],
-        [0,0,0,1,1,1,1,1,1,0,0,0],
-        [0,0,1,0,1,1,1,1,0,1,0,0],
-        [0,1,1,0,1,1,1,1,0,1,1,0],
-        [0,1,0,0,1,0,0,1,0,0,1,0],
-        [1,1,0,1,1,0,0,1,1,0,1,1]
-      ];
-      colors = {
-        1: '#f1f5f9', // Skeleton white bone
-        2: '#0f172a', // Eye sockets
-        3: '#94a3b8'  // Teeth/details
-      };
-    } else if (enemy.type === 'golem') {
-      sprite = [
-        [0,0,1,1,1,1,1,1,1,1,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,1,2,2,1,1,1,1,2,2,1,1],
-        [1,1,2,2,1,3,3,1,2,2,1,1],
-        [0,1,1,1,3,3,3,3,1,1,1,0],
-        [0,1,1,1,1,3,3,1,1,1,1,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [0,0,1,1,1,1,1,1,1,1,0,0],
-        [0,0,1,1,1,0,0,1,1,1,0,0],
-        [0,1,1,1,0,0,0,0,1,1,1,0]
-      ];
-      colors = {
-        1: '#64748b', // Golem stone body
-        2: '#334155', // Shading / cracks
-        3: '#06b6d4'  // Glowing core
-      };
-    } else if (enemy.type === 'dragon') {
-      sprite = [
-        [0,0,0,1,1,1,1,1,1,0,0,0],
-        [0,0,1,1,1,1,1,1,1,1,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [0,1,1,3,3,1,1,3,3,1,1,0],
-        [1,1,1,3,3,1,1,3,3,1,1,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,1,2,2,2,2,2,2,2,2,1,1],
-        [1,1,1,2,2,2,2,2,2,1,1,1],
-        [0,1,1,1,1,2,2,1,1,1,1,0],
-        [0,0,1,1,1,1,1,1,1,1,0,0],
-        [0,0,4,4,1,1,1,1,4,4,0,0],
-        [0,4,4,4,4,0,0,4,4,4,4,0]
-      ];
-      colors = {
-        1: '#dc2626', // Crimson red
-        2: '#fef08a', // Fire throat / mouth glow
-        3: '#facc15', // Gold eyes
-        4: '#7f1d1d'  // Dark dragon wing panels
-      };
-    } else if (enemy.type === 'merchant') {
-      sprite = [
-        [0,0,0,1,1,1,1,1,1,0,0,0],
-        [0,0,1,1,1,1,1,1,1,1,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,0],
-        [0,1,1,2,2,2,2,2,2,1,1,0],
-        [1,1,2,2,3,2,2,3,2,2,1,1],
-        [1,1,2,2,2,2,2,2,2,2,1,1],
-        [0,1,1,4,4,4,4,4,4,1,1,0],
-        [0,0,1,4,5,4,4,5,4,1,0,0],
-        [0,0,1,4,4,4,4,4,4,1,0,0],
-        [0,0,0,1,1,1,1,1,1,0,0,0],
-        [0,0,0,1,1,0,0,1,1,0,0,0],
-        [0,0,1,1,0,0,0,0,1,1,0,0]
-      ];
-      colors = {
-        1: '#7c3aed', // Purple cowl/robe
-        2: '#1e1b4b', // Cowl face shadow
-        3: '#facc15', // Gold eyes
-        4: '#fbbf24', // Gold details
-        5: '#f43f5e'  // Ruby gem amulet
-      };
-    }
-
-    if (sprite) {
-      const pixelSize = 3;
-      const slimeYOffset = (enemy.type === 'slime') ? breath : 0;
-      const yBob = (enemy.type !== 'slime') ? breath : 0;
-
-      const startX = screenX + (this.tileSize - pixelSize * 12) / 2;
-      const startY = screenY + (this.tileSize - pixelSize * 12) / 2 + slimeYOffset + yBob;
-
-      for (let r = 0; r < 12; r++) {
-        for (let c = 0; c < 12; c++) {
-          const val = sprite[r][c];
-          if (val !== 0) {
-            this.ctx.fillStyle = colors[val];
-            let rh = pixelSize;
-            if (enemy.type === 'slime' && breath > 0) {
-              rh = pixelSize - 0.3; // slightly squash slime on breath down
-            }
-            this.ctx.fillRect(startX + c * pixelSize, startY + r * rh, pixelSize, rh);
-          }
-        }
-      }
-    } else {
-      // Fallback
-      this.ctx.font = `bold 24px 'Outfit', 'Inter', monospace`;
-      this.ctx.textAlign = 'center';
-      this.ctx.textBaseline = 'middle';
-      this.ctx.fillStyle = enemy.color;
-      this.ctx.fillText(enemy.symbol, screenX + this.tileSize / 2, screenY + this.tileSize / 2 + breath);
-    }
+    this.ctx.fillStyle = enemy.color;
+    
+    // Draw the symbol
+    this.ctx.fillText(
+      enemy.symbol, 
+      screenX + this.tileSize / 2, 
+      screenY + this.tileSize / 2 + (enemy.type === 'slime' ? breath : 0)
+    );
 
     // HP Mini Bar for enemies
     if (enemy.hp < enemy.maxHp) {
@@ -575,50 +281,16 @@ export class DungeonRenderer {
     // Glowing aura
     const pulse = (Math.sin(this.pulseTime * 5) + 1) / 2;
     this.ctx.shadowColor = player.color;
-    this.ctx.shadowBlur = 6 + pulse * 4;
+    this.ctx.shadowBlur = 10 + pulse * 6;
+
+    this.ctx.font = `bold 28px 'Outfit', 'Inter', monospace`;
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillStyle = player.color;
 
     // Bouncing hero effect
-    const bob = Math.floor(Math.sin(this.pulseTime * 3.5) * 1.8);
-
-    // 12x12 Knight Pixel Art Sprite (1:skin, 2:helmet, 3:tunic, 4:eyes, 5:brown, 6:blade, 7:shield)
-    const sprite = [
-      [0,0,2,2,2,2,2,2,0,0,0,0],
-      [0,2,2,2,2,2,2,2,2,0,0,0],
-      [2,2,2,2,2,2,2,2,2,2,0,0],
-      [0,0,1,1,1,1,1,1,0,0,6,0],
-      [7,7,1,4,1,1,4,1,1,0,6,0],
-      [7,7,1,1,1,1,1,1,1,0,6,0],
-      [0,7,3,3,3,3,3,3,0,5,6,5],
-      [0,0,3,3,3,3,3,3,3,0,0,0],
-      [0,3,3,5,3,3,5,3,3,0,0,0],
-      [0,3,3,5,5,5,5,3,3,0,0,0],
-      [0,0,5,5,0,0,5,5,0,0,0,0],
-      [0,5,5,0,0,0,0,5,5,0,0,0]
-    ];
-
-    const pixelSize = 3; // 12 * 3 = 36px inside 40px tile
-    const startX = screenX + (this.tileSize - pixelSize * 12) / 2;
-    const startY = screenY + (this.tileSize - pixelSize * 12) / 2 + bob;
-
-    const colors: { [key: number]: string } = {
-      1: '#ffedd5', // Skin tone
-      2: '#94a3b8', // Steel helmet
-      3: '#0ea5e9', // Blue armor/tunic
-      4: '#0f172a', // Eyes
-      5: '#b45309', // Leather belt/boots/hilt
-      6: '#cbd5e1', // Silver sword blade
-      7: '#ef4444'  // Red shield
-    };
-
-    for (let r = 0; r < 12; r++) {
-      for (let c = 0; c < 12; c++) {
-        const val = sprite[r][c];
-        if (val !== 0) {
-          this.ctx.fillStyle = colors[val];
-          this.ctx.fillRect(startX + c * pixelSize, startY + r * pixelSize, pixelSize, pixelSize);
-        }
-      }
-    }
+    const bob = Math.sin(this.pulseTime * 3) * 1.8;
+    this.ctx.fillText(player.symbol, screenX + this.tileSize / 2, screenY + this.tileSize / 2 + bob);
 
     this.ctx.shadowBlur = 0;
   }

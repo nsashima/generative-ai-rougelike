@@ -18,10 +18,10 @@
         <h1>サシマのシレン</h1>
       </div>
       <div class="controls-top">
-        <button id="sound-toggle-btn" class="icon-btn" title="音声を切替 (M)">
-          <span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>
+        <button id="sound-toggle-btn" class="icon-btn" title="音声を切替">
+          <span class="sound-icon">🔊</span> オン
         </button>
-        <button id="restart-btn" class="btn btn-secondary">リトライ <kbd class="key-hint">R</kbd></button>
+        <button id="restart-btn" class="btn btn-secondary">リトライ</button>
       </div>
     </header>
 
@@ -36,35 +36,23 @@
             <div class="shop-content">
               <div class="shop-header">
                 <h2>🏬 旅の商人</h2>
-                <button id="close-shop-btn" class="btn btn-secondary btn-sm">閉じる <kbd class="key-hint">Esc</kbd></button>
+                <button id="close-shop-btn" class="btn btn-secondary btn-sm">閉じる</button>
               </div>
               <p class="shop-welcome">「何を買う？ 何を売ってくれるんだい？」</p>
-              
-              <!-- Tab Switcher -->
-              <div class="shop-tabs">
-                <button id="shop-tab-buy" class="shop-tab active">📥 購入する <kbd class="key-hint">Tab</kbd></button>
-                <button id="shop-tab-sell" class="shop-tab">📤 売却する <kbd class="key-hint">Tab</kbd></button>
-              </div>
-
               <div class="shop-player-gold">所持金: <span id="shop-gold-val" class="gold">0 G</span></div>
               
-              <!-- Buy Panel -->
-              <div id="shop-buy-panel" class="shop-panel">
+              <div class="shop-section">
+                <h3>📥 商品を買う</h3>
                 <ul id="shop-item-list" class="shop-item-list">
                   <!-- Dynamically populated buy list -->
                 </ul>
               </div>
 
-              <!-- Sell Panel -->
-              <div id="shop-sell-panel" class="shop-panel hidden">
+              <div class="shop-section">
+                <h3>📤 持ち物を売る</h3>
                 <ul id="shop-sell-list" class="shop-sell-list">
                   <!-- Dynamically populated sell list -->
                 </ul>
-              </div>
-
-              <!-- Keyboard Guide -->
-              <div class="shop-nav-guide">
-                <span>[▲/▼ (W/S)] 選択 | [Enter] 決定 | [Tab] 切替 | [Esc] 閉じる</span>
               </div>
             </div>
           </div>
@@ -75,7 +63,7 @@
               <span class="overlay-icon">🧭</span>
               <h1>サシマのシレン</h1>
               <p class="overlay-subtitle">ダンジョンの最深部（地下5階）に眠る「生成AIの秘宝」を持ち帰れ！</p>
-              <button id="start-game-btn" class="btn btn-primary btn-lg">冒険を始める <kbd class="key-hint">Enter</kbd></button>
+              <button id="start-game-btn" class="btn btn-primary btn-lg">冒険を始める</button>
             </div>
           </div>
 
@@ -92,7 +80,7 @@
                 <div class="stat-row"><span>獲得ゴールド:</span> <span id="go-gold">0 G</span></div>
                 <div class="stat-row final-score"><span>最終スコア:</span> <span id="go-score">0 点</span></div>
               </div>
-              <button id="go-restart-btn" class="btn btn-danger btn-lg">もう一度挑戦する <kbd class="key-hint">Enter</kbd></button>
+              <button id="go-restart-btn" class="btn btn-danger btn-lg">もう一度挑戦する</button>
             </div>
           </div>
 
@@ -111,7 +99,7 @@
                 </div>
                 <div class="stat-row final-score"><span>最終スコア:</span> <span id="vic-score" class="gold">0 点</span></div>
               </div>
-              <button id="vic-restart-btn" class="btn btn-primary btn-lg">もう一度遊ぶ <kbd class="key-hint">Enter</kbd></button>
+              <button id="vic-restart-btn" class="btn btn-primary btn-lg">もう一度遊ぶ</button>
             </div>
           </div>
         </div>
@@ -217,7 +205,7 @@
     </main>
 
     <footer class="app-footer">
-      <p>操作: [WASD/矢印] 移動・攻撃 | [Space] 待機 | [&gt;] 階段下り | [1-0] 使用/装備 | [Shift+1-0] 置く | [M] 音声 | [R] リトライ</p>
+      <p>操作: 方向キー/WASDで移動・攻撃 | スペースで待機 | &gt; キーで階段を下りる</p>
     </footer>
   </div>
 

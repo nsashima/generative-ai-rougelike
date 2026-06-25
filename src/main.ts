@@ -57,10 +57,6 @@ let closeShopBtn: HTMLButtonElement;
 let shopGoldVal: HTMLElement;
 let shopItemList: HTMLElement;
 let shopSellList: HTMLElement;
-let shopTabBuy: HTMLButtonElement;
-let shopTabSell: HTMLButtonElement;
-let shopBuyPanel: HTMLElement;
-let shopSellPanel: HTMLElement;
 
 // Mobile pad controls
 let ctrlUp: HTMLButtonElement;
@@ -102,10 +98,6 @@ window.addEventListener('DOMContentLoaded', () => {
   shopGoldVal = document.getElementById('shop-gold-val')!;
   shopItemList = document.getElementById('shop-item-list')!;
   shopSellList = document.getElementById('shop-sell-list')!;
-  shopTabBuy = document.getElementById('shop-tab-buy') as HTMLButtonElement;
-  shopTabSell = document.getElementById('shop-tab-sell') as HTMLButtonElement;
-  shopBuyPanel = document.getElementById('shop-buy-panel')!;
-  shopSellPanel = document.getElementById('shop-sell-panel')!;
 
   // Start overlay elements
   startOverlay = document.getElementById('start-overlay')!;
@@ -145,33 +137,11 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEvents() {
-  // Keyboard movement and actions
+  // Keyboard movement
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     // Prevent default scrolling for arrows and space
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(e.key)) {
       e.preventDefault();
-    }
-
-    // Prevent digit defaults to avoid unexpected browser shortcut conflicts
-    if (e.code.startsWith('Digit')) {
-      e.preventDefault();
-    }
-
-    // Global keys (work in any status)
-    if (e.code === 'KeyM') {
-      const isEnabled = soundEffects.toggle();
-      if (isEnabled) {
-        soundToggleBtn.classList.remove('muted');
-        soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>';
-      } else {
-        soundToggleBtn.classList.add('muted');
-        soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ <kbd class="key-hint">M</kbd>';
-      }
-      return;
-    }
-    if (e.code === 'KeyR') {
-      handleRestart();
-      return;
     }
 
     if (engine.state.status !== 'playing') {
@@ -179,78 +149,9 @@ function setupEvents() {
         if (e.key === 'Escape') {
           engine.closeShop();
           updateHUD();
-          return;
-        }
-
-        // Tab, or ArrowLeft/ArrowRight or A/D to switch tabs
-        if (e.key === 'Tab' || e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'KeyA' || e.code === 'KeyD') {
-          e.preventDefault();
-          engine.shopActiveTab = engine.shopActiveTab === 'buy' ? 'sell' : 'buy';
-          engine.shopSelectedIndex = 0;
-          updateHUD();
-          scrollSelectedShopItemIntoView();
-          return;
-        }
-
-        // ArrowUp or KeyW to move selection up
-        if (e.code === 'ArrowUp' || e.code === 'KeyW') {
-          e.preventDefault();
-          const itemsCount = engine.shopActiveTab === 'buy' 
-            ? engine.getShopItems().length 
-            : engine.state.inventory.length;
-          if (itemsCount > 0) {
-            engine.shopSelectedIndex = (engine.shopSelectedIndex - 1 + itemsCount) % itemsCount;
-            updateHUD();
-            scrollSelectedShopItemIntoView();
-          }
-          return;
-        }
-
-        // ArrowDown or KeyS to move selection down
-        if (e.code === 'ArrowDown' || e.code === 'KeyS') {
-          e.preventDefault();
-          const itemsCount = engine.shopActiveTab === 'buy' 
-            ? engine.getShopItems().length 
-            : engine.state.inventory.length;
-          if (itemsCount > 0) {
-            engine.shopSelectedIndex = (engine.shopSelectedIndex + 1) % itemsCount;
-            updateHUD();
-            scrollSelectedShopItemIntoView();
-          }
-          return;
-        }
-
-        // Enter or Space to execute transaction
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          if (engine.shopActiveTab === 'buy') {
-            const shopItems = engine.getShopItems();
-            const selectedItem = shopItems[engine.shopSelectedIndex];
-            if (selectedItem) {
-              engine.buyItem(selectedItem.id);
-              const newItemsCount = engine.getShopItems().length;
-              if (engine.shopSelectedIndex >= newItemsCount) {
-                engine.shopSelectedIndex = Math.max(0, newItemsCount - 1);
-              }
-              updateHUD();
-              scrollSelectedShopItemIntoView();
-            }
-          } else {
-            const inventory = engine.state.inventory;
-            if (inventory.length > 0) {
-              engine.sellItem(engine.shopSelectedIndex);
-              const newItemsCount = engine.state.inventory.length;
-              if (engine.shopSelectedIndex >= newItemsCount) {
-                engine.shopSelectedIndex = Math.max(0, newItemsCount - 1);
-              }
-              updateHUD();
-              scrollSelectedShopItemIntoView();
-            }
-          }
-          return;
         }
       } else {
-        // If game is not active, Enter or Space restarts or starts the game
+        // If game is not active, any key restarts or starts the game
         if (e.key === 'Enter' || e.key === ' ') {
           handleRestart();
         }
@@ -295,23 +196,6 @@ function setupEvents() {
         break;
     }
 
-    // Inventory interactions: Digit1 to Digit0
-    const digitMatch = e.code.match(/^Digit([0-9])$/);
-    if (digitMatch) {
-      const digit = digitMatch[1];
-      const slotNum = digit === '0' ? 9 : parseInt(digit) - 1;
-      if (slotNum < engine.state.inventory.length) {
-        if (e.shiftKey) {
-          // Drop item
-          engine.dropInventoryItem(slotNum);
-        } else {
-          // Use / Equip item
-          engine.useInventoryItem(slotNum);
-        }
-        updateHUD();
-      }
-    }
-
     updateHUD();
   });
 
@@ -327,10 +211,10 @@ function setupEvents() {
     const isEnabled = soundEffects.toggle();
     if (isEnabled) {
       soundToggleBtn.classList.remove('muted');
-      soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>';
+      soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン';
     } else {
       soundToggleBtn.classList.add('muted');
-      soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ <kbd class="key-hint">M</kbd>';
+      soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ';
     }
   });
 
@@ -350,24 +234,10 @@ function setupEvents() {
     updateHUD();
   });
 
-  // Shop tab click events
-  shopTabBuy.addEventListener('click', () => {
-    engine.shopActiveTab = 'buy';
-    engine.shopSelectedIndex = 0;
-    updateHUD();
-  });
-
-  shopTabSell.addEventListener('click', () => {
-    engine.shopActiveTab = 'sell';
-    engine.shopSelectedIndex = 0;
-    updateHUD();
-  });
-
   // Listen to shop events
   window.addEventListener('shop-opened', () => {
     shopModal.classList.remove('hidden');
     renderShop();
-    scrollSelectedShopItemIntoView();
   });
 
   window.addEventListener('shop-closed', () => {
@@ -493,11 +363,9 @@ function updateHUD() {
     const useBtn = document.createElement('button');
     useBtn.className = 'btn btn-sm btn-primary';
     
-    const keyNum = index === 9 ? '0' : (index + 1).toString();
-    
     // Check if equipment or consumable
     const isEquip = item.type === 'weapon_sword' || item.type === 'armor_shield';
-    useBtn.innerHTML = `${isEquip ? '装備' : '使う'} <kbd class="key-hint">${keyNum}</kbd>`;
+    useBtn.innerText = isEquip ? '装備' : '使う';
     useBtn.addEventListener('click', () => {
       engine.useInventoryItem(index);
       updateHUD();
@@ -505,7 +373,7 @@ function updateHUD() {
 
     const dropBtn = document.createElement('button');
     dropBtn.className = 'btn btn-sm btn-danger';
-    dropBtn.innerHTML = `置く <kbd class="key-hint">S-${keyNum}</kbd>`;
+    dropBtn.innerText = '置く';
     dropBtn.addEventListener('click', () => {
       engine.dropInventoryItem(index);
       updateHUD();
@@ -553,9 +421,6 @@ function updateHUD() {
     startOverlay.classList.add('hidden');
     gameoverOverlay.classList.add('hidden');
     victoryOverlay.classList.add('hidden');
-    if (state.status === 'shop') {
-      renderShop();
-    }
   }
 
   // Render logs
@@ -591,47 +456,16 @@ function renderLogs() {
   logFeed.scrollTop = logFeed.scrollHeight;
 }
 
-function scrollSelectedShopItemIntoView() {
-  setTimeout(() => {
-    const selectedEl = document.querySelector('.shop-item.selected');
-    if (selectedEl) {
-      selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-  }, 10);
-}
-
 function renderShop() {
   const state = engine.state;
   shopGoldVal.innerText = `${state.gold} G`;
-
-  // Update tabs active state
-  if (engine.shopActiveTab === 'buy') {
-    shopTabBuy.classList.add('active');
-    shopTabSell.classList.remove('active');
-    shopBuyPanel.classList.remove('hidden');
-    shopSellPanel.classList.add('hidden');
-  } else {
-    shopTabBuy.classList.remove('active');
-    shopTabSell.classList.add('active');
-    shopBuyPanel.classList.add('hidden');
-    shopSellPanel.classList.remove('hidden');
-  }
   
   // 1. Render Buy List
   shopItemList.innerHTML = '';
   const shopItems = engine.getShopItems();
-  shopItems.forEach((item, index) => {
+  shopItems.forEach(item => {
     const li = document.createElement('li');
     li.className = 'shop-item';
-    if (engine.shopActiveTab === 'buy' && index === engine.shopSelectedIndex) {
-      li.classList.add('selected');
-    }
-    
-    li.addEventListener('click', () => {
-      engine.shopActiveTab = 'buy';
-      engine.shopSelectedIndex = index;
-      updateHUD();
-    });
 
     const infoDiv = document.createElement('div');
     infoDiv.className = 'shop-item-info';
@@ -667,12 +501,7 @@ function renderShop() {
 
     const buyBtn = document.createElement('button');
     buyBtn.className = 'btn btn-sm btn-primary';
-    
-    if (engine.shopActiveTab === 'buy' && index === engine.shopSelectedIndex) {
-      buyBtn.innerHTML = `購入 <kbd class="key-hint">Enter</kbd>`;
-    } else {
-      buyBtn.innerText = `購入`;
-    }
+    buyBtn.innerText = '購入';
     
     if (state.gold < item.price) {
       buyBtn.disabled = true;
@@ -681,10 +510,7 @@ function renderShop() {
       buyBtn.style.opacity = '0.5';
     }
 
-    buyBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      engine.shopActiveTab = 'buy';
-      engine.shopSelectedIndex = index;
+    buyBtn.addEventListener('click', () => {
       engine.buyItem(item.id);
       updateHUD();
     });
@@ -703,22 +529,13 @@ function renderShop() {
     emptyDiv.style.textAlign = 'center';
     emptyDiv.style.fontSize = '0.75rem';
     emptyDiv.style.color = 'var(--text-secondary)';
-    emptyDiv.style.padding = '1rem';
+    emptyDiv.style.padding = '0.5rem';
     emptyDiv.innerText = '売却できるアイテムがありません。';
     shopSellList.appendChild(emptyDiv);
   } else {
     state.inventory.forEach((item, index) => {
       const li = document.createElement('li');
       li.className = 'shop-item';
-      if (engine.shopActiveTab === 'sell' && index === engine.shopSelectedIndex) {
-        li.classList.add('selected');
-      }
-
-      li.addEventListener('click', () => {
-        engine.shopActiveTab = 'sell';
-        engine.shopSelectedIndex = index;
-        updateHUD();
-      });
 
       const infoDiv = document.createElement('div');
       infoDiv.className = 'shop-item-info';
@@ -755,22 +572,9 @@ function renderShop() {
 
       const sellBtn = document.createElement('button');
       sellBtn.className = 'btn btn-sm btn-danger';
-      if (engine.shopActiveTab === 'sell' && index === engine.shopSelectedIndex) {
-        sellBtn.innerHTML = `売却 <kbd class="key-hint">Enter</kbd>`;
-      } else {
-        sellBtn.innerText = `売却`;
-      }
-      
-      sellBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        engine.shopActiveTab = 'sell';
-        engine.shopSelectedIndex = index;
+      sellBtn.innerText = '売却';
+      sellBtn.addEventListener('click', () => {
         engine.sellItem(index);
-        
-        const newItemsCount = engine.state.inventory.length;
-        if (engine.shopSelectedIndex >= newItemsCount) {
-          engine.shopSelectedIndex = Math.max(0, newItemsCount - 1);
-        }
         updateHUD();
       });
 

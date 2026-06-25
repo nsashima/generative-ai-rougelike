@@ -674,52 +674,20 @@ canvas {
   padding-bottom: 0.4rem;
 }
 
-/* Shop Tabs and Panel Styles */
-.shop-tabs {
-  display: flex;
-  gap: 0.4rem;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.2rem;
-  flex-shrink: 0;
-}
-
-.shop-tab {
-  flex: 1;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-secondary);
-  font-family: var(--font-sans);
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0.5rem 0;
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.3rem;
-  transition: var(--transition-fast);
-}
-
-.shop-tab:hover {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.shop-tab.active {
-  color: var(--accent-sky);
-  border-bottom-color: var(--accent-sky);
-}
-
-.shop-panel {
+.shop-section {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  min-height: 0;
+  gap: 0.3rem;
 }
 
-.shop-panel.hidden {
-  display: none !important;
+.shop-section h3 {
+  font-size: 0.78rem;
+  color: var(--accent-sky);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  padding-bottom: 0.2rem;
 }
 
 .shop-item-list, .shop-sell-list {
@@ -727,10 +695,9 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  max-height: 250px; /* Increased height since only one is shown */
+  max-height: 140px; /* Shrunk to fit both panels vertically */
   overflow-y: auto;
   padding-right: 4px;
-  padding-bottom: 4px;
 }
 
 .shop-item-list::-webkit-scrollbar, .shop-sell-list::-webkit-scrollbar {
@@ -745,27 +712,15 @@ canvas {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0.6rem;
+  padding: 0.4rem 0.6rem;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 8px;
-  transition: var(--transition-fast);
 }
 
-.shop-item:hover, .shop-item.selected {
-  background: rgba(56, 189, 248, 0.08) !important;
-  border-color: var(--accent-sky) !important;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.12);
-}
-
-.shop-nav-guide {
-  font-size: 0.68rem;
-  color: var(--text-secondary);
-  text-align: center;
-  border-top: 1px solid var(--border-color);
-  padding-top: 0.5rem;
-  margin-top: 0.2rem;
-  flex-shrink: 0;
+.shop-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .shop-item-info {
@@ -968,36 +923,3 @@ canvas {
   border-radius: 6px;
   margin-top: 0.2rem;
 }
-
-/* Keyboard shortcut key hint */
-.key-hint {
-  display: inline-block;
-  background-color: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
-  color: var(--text-primary);
-  border-radius: 4px;
-  padding: 0.1rem 0.3rem;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: bold;
-  line-height: 1;
-  margin-left: 0.35rem;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
-  vertical-align: middle;
-  text-transform: uppercase;
-}
-
-.btn .key-hint {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.15);
-  border-bottom-color: rgba(255, 255, 255, 0.25);
-}
-
-.btn-primary .key-hint {
-  color: var(--bg-primary);
-  background-color: rgba(255, 255, 255, 0.3);
-  border-color: rgba(0, 0, 0, 0.1);
-  border-bottom-color: rgba(0, 0, 0, 0.2);
-}
-
