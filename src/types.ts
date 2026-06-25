@@ -30,6 +30,8 @@ export interface Item {
   description: string;
   symbol: string;
   color: string;
+  durability?: number;
+  maxDurability?: number;
 }
 
 export type EntityType = 'player' | 'slime' | 'goblin' | 'skeleton' | 'golem' | 'dragon' | 'merchant' | 'hellhound' | 'vampire' | 'demon' | 'archdemon' | 'demon_king';

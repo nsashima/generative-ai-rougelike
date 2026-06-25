@@ -1,6 +1,7 @@
 import { GameEngine } from './game';
 import { DungeonRenderer } from './renderer';
 import { soundEffects } from './sound';
+import { Item } from './types';
 
 // DOM elements
 let canvas: HTMLCanvasElement;
@@ -91,6 +92,7 @@ let itemDetailValue: HTMLElement;
 let itemDetailPrice: HTMLElement;
 let itemDetailDesc: HTMLElement;
 let selectedInventoryIndex: number = -1;
+let selectedItemDetailType: 'inventory' | 'weapon' | 'armor' = 'inventory';
 
 // Help elements
 let helpBtn: HTMLButtonElement;
@@ -243,21 +245,15 @@ function setupEvents() {
         closeItemDetail();
         return;
       }
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' || e.code === 'KeyE') {
         e.preventDefault();
-        if (selectedInventoryIndex !== -1) {
-          engine.useInventoryItem(selectedInventoryIndex);
-          closeItemDetail();
-          updateHUD();
-        }
+        itemDetailUseBtn.click();
         return;
       }
       if (e.code === 'KeyD' || e.key === 'Delete') {
         e.preventDefault();
-        if (selectedInventoryIndex !== -1) {
-          engine.dropInventoryItem(selectedInventoryIndex);
-          closeItemDetail();
-          updateHUD();
+        if (!itemDetailDropBtn.disabled) {
+          itemDetailDropBtn.click();
         }
         return;
       }
@@ -441,6 +437,24 @@ function setupEvents() {
         break;
     }
 
+    // Inspect equipped items using Alt+W (weapon) and Alt+A (armor)
+    if (e.altKey) {
+      if (e.code === 'KeyW') {
+        e.preventDefault();
+        if (engine.equippedWeapon) {
+          openItemDetail(0, 'weapon');
+        }
+        return;
+      }
+      if (e.code === 'KeyA') {
+        e.preventDefault();
+        if (engine.equippedArmor) {
+          openItemDetail(0, 'armor');
+        }
+        return;
+      }
+    }
+
     // Inventory interactions: Digit1 to Digit0
     const digitMatch = e.code.match(/^Digit([0-9])$/);
     if (digitMatch) {
@@ -595,15 +609,27 @@ function setupEvents() {
   itemDetailCloseBtn.addEventListener('click', closeItemDetail);
 
   itemDetailUseBtn.addEventListener('click', () => {
-    if (selectedInventoryIndex !== -1) {
+    if (selectedItemDetailType === 'inventory' && selectedInventoryIndex !== -1) {
       engine.useInventoryItem(selectedInventoryIndex);
       closeItemDetail();
       updateHUD();
+    } else if (selectedItemDetailType === 'weapon') {
+      const ok = engine.unequipItem('weapon');
+      if (ok) {
+        closeItemDetail();
+        updateHUD();
+      }
+    } else if (selectedItemDetailType === 'armor') {
+      const ok = engine.unequipItem('armor');
+      if (ok) {
+        closeItemDetail();
+        updateHUD();
+      }
     }
   });
 
   itemDetailDropBtn.addEventListener('click', () => {
-    if (selectedInventoryIndex !== -1) {
+    if (selectedItemDetailType === 'inventory' && selectedInventoryIndex !== -1) {
       engine.dropInventoryItem(selectedInventoryIndex);
       closeItemDetail();
       updateHUD();
@@ -613,6 +639,18 @@ function setupEvents() {
   // Help Modal click listeners
   helpBtn.addEventListener('click', toggleHelp);
   closeHelpBtn.addEventListener('click', closeHelp);
+
+  // Equipment click listeners to inspect details
+  equipWeapon.addEventListener('click', () => {
+    if (engine.equippedWeapon) {
+      openItemDetail(0, 'weapon');
+    }
+  });
+  equipArmor.addEventListener('click', () => {
+    if (engine.equippedArmor) {
+      openItemDetail(0, 'armor');
+    }
+  });
 }
 
 function handleRestart() {
@@ -654,23 +692,33 @@ function updateHUD() {
 
   // Equipped Items UI
   if (engine.equippedWeapon) {
-    equipWeapon.innerText = `${engine.equippedWeapon.name} (+${engine.equippedWeapon.value})`;
+    const durText = engine.equippedWeapon.durability !== undefined ? ` [耐久:${engine.equippedWeapon.durability}/${engine.equippedWeapon.maxDurability}]` : '';
+    equipWeapon.innerText = `${engine.equippedWeapon.name} (+${engine.equippedWeapon.value})${durText}`;
     equipWeapon.classList.remove('empty');
     equipWeapon.style.color = engine.equippedWeapon.color;
+    equipWeapon.style.cursor = 'pointer';
+    equipWeapon.style.textDecoration = 'underline';
   } else {
     equipWeapon.innerText = '未装備';
     equipWeapon.classList.add('empty');
     equipWeapon.style.color = '';
+    equipWeapon.style.cursor = '';
+    equipWeapon.style.textDecoration = '';
   }
 
   if (engine.equippedArmor) {
-    equipArmor.innerText = `${engine.equippedArmor.name} (+${engine.equippedArmor.value})`;
+    const durText = engine.equippedArmor.durability !== undefined ? ` [耐久:${engine.equippedArmor.durability}/${engine.equippedArmor.maxDurability}]` : '';
+    equipArmor.innerText = `${engine.equippedArmor.name} (+${engine.equippedArmor.value})${durText}`;
     equipArmor.classList.remove('empty');
     equipArmor.style.color = engine.equippedArmor.color;
+    equipArmor.style.cursor = 'pointer';
+    equipArmor.style.textDecoration = 'underline';
   } else {
     equipArmor.innerText = '未装備';
     equipArmor.classList.add('empty');
     equipArmor.style.color = '';
+    equipArmor.style.cursor = '';
+    equipArmor.style.textDecoration = '';
   }
 
   // Inventory UI
@@ -696,7 +744,8 @@ function updateHUD() {
     const nameSpan = document.createElement('span');
     nameSpan.className = 'item-name';
     nameSpan.style.color = item.color;
-    nameSpan.innerText = item.name;
+    const durText = item.durability !== undefined ? ` [耐久:${item.durability}/${item.maxDurability}]` : '';
+    nameSpan.innerText = `${item.name}${durText}`;
     
     detailsDiv.appendChild(nameSpan);
     
@@ -872,7 +921,7 @@ function renderShop() {
     const nameSpan = document.createElement('span');
     nameSpan.className = 'shop-item-name';
     nameSpan.style.color = item.color;
-    nameSpan.innerText = item.name;
+    nameSpan.innerText = item.name + (item.stock !== undefined ? ` (残:${item.stock})` : '');
 
     const descSpan = document.createElement('span');
     descSpan.className = 'shop-item-desc';
@@ -899,7 +948,13 @@ function renderShop() {
       buyBtn.innerText = `購入`;
     }
     
-    if (state.gold < item.price) {
+    if (item.stock !== undefined && item.stock <= 0) {
+      buyBtn.disabled = true;
+      buyBtn.innerText = '売り切れ';
+      buyBtn.classList.remove('btn-primary');
+      buyBtn.classList.add('btn-secondary');
+      buyBtn.style.opacity = '0.5';
+    } else if (state.gold < item.price) {
       buyBtn.disabled = true;
       buyBtn.classList.remove('btn-primary');
       buyBtn.classList.add('btn-secondary');
@@ -1008,11 +1063,22 @@ function renderShop() {
   }
 }
 
-function openItemDetail(index: number) {
-  const item = engine.state.inventory[index];
+function openItemDetail(index: number, type: 'inventory' | 'weapon' | 'armor' = 'inventory') {
+  let item: Item | null = null;
+  selectedItemDetailType = type;
+
+  if (type === 'inventory') {
+    item = engine.state.inventory[index];
+    selectedInventoryIndex = index;
+  } else if (type === 'weapon') {
+    item = engine.equippedWeapon;
+    selectedInventoryIndex = -1;
+  } else if (type === 'armor') {
+    item = engine.equippedArmor;
+    selectedInventoryIndex = -1;
+  }
+
   if (!item) return;
-  
-  selectedInventoryIndex = index;
   
   // Set content
   itemDetailSymbol.innerText = item.symbol;
@@ -1033,7 +1099,8 @@ function openItemDetail(index: number) {
   // Determine value string
   let valStr = item.value.toString();
   if (item.type === 'weapon_sword' || item.type === 'armor_shield') {
-    valStr = `+${item.value}`;
+    const durStr = item.durability !== undefined ? ` (耐久:${item.durability}/${item.maxDurability})` : '';
+    valStr = `+${item.value}${durStr}`;
   } else if (item.type === 'potion_heal') {
     valStr = `最大HPの ${item.value}% 回復`;
   } else if (item.type === 'potion_strength') {
@@ -1053,7 +1120,15 @@ function openItemDetail(index: number) {
   
   // Set use button text
   const isEquip = item.type === 'weapon_sword' || item.type === 'armor_shield';
-  itemDetailUseBtn.innerText = isEquip ? '装備する' : '使う';
+  if (type === 'weapon' || type === 'armor') {
+    itemDetailUseBtn.innerHTML = `装備を外す <kbd class="key-hint">Enter/E</kbd>`;
+    itemDetailDropBtn.disabled = true;
+    itemDetailDropBtn.style.opacity = '0.5';
+  } else {
+    itemDetailUseBtn.innerHTML = `${isEquip ? '装備する' : '使う'} <kbd class="key-hint">Enter/E</kbd>`;
+    itemDetailDropBtn.disabled = false;
+    itemDetailDropBtn.style.opacity = '1';
+  }
   
   // Show modal
   itemDetailModal.classList.remove('hidden');
@@ -1062,6 +1137,7 @@ function openItemDetail(index: number) {
 function closeItemDetail() {
   itemDetailModal.classList.add('hidden');
   selectedInventoryIndex = -1;
+  selectedItemDetailType = 'inventory';
 }
 
 function openHelp() {
