@@ -80,9 +80,6 @@
                 <button id="close-item-detail-btn" class="btn btn-secondary btn-sm">閉じる <kbd class="key-hint">Esc</kbd></button>
               </div>
               <div class="item-detail-body">
-                <div class="item-detail-visual-wrapper">
-                  <div id="item-detail-symbol" class="item-detail-symbol">?</div>
-                </div>
                 <div class="item-detail-info">
                   <h3 id="item-detail-name" class="item-detail-name">アイテム名</h3>
                   <div class="item-detail-meta">
@@ -282,11 +279,11 @@
           <!-- Equipment Slots inline -->
           <div class="equipment-section">
             <div class="equip-slot">
-              <span class="equip-label">武器 [ / ] <kbd class="key-hint">Alt+W</kbd> :</span>
+              <span id="equip-weapon-label" class="equip-label">武器 <kbd class="key-hint">Alt+W</kbd> :</span>
               <span id="equip-weapon" class="equip-name empty">未装備</span>
             </div>
             <div class="equip-slot">
-              <span class="equip-label">防具 [ [ ] <kbd class="key-hint">Alt+A</kbd> :</span>
+              <span id="equip-armor-label" class="equip-label">防具 <kbd class="key-hint">Alt+A</kbd> :</span>
               <span id="equip-armor" class="equip-name empty">未装備</span>
             </div>
           </div>
