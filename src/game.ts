@@ -201,7 +201,7 @@ export class GameEngine {
     const player = this.state.player;
     if (player.xp !== undefined && player.maxXp !== undefined) {
       player.xp += xpGained;
-      if (player.xp >= player.maxXp) {
+      while (player.xp >= player.maxXp) {
         this.levelUp();
       }
     }
