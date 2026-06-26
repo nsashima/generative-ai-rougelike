@@ -35,6 +35,8 @@ export interface Item {
   maxDurability?: number;
 }
 
+export type JobType = 'warrior' | 'guardian' | 'ninja';
+
 export type EntityType = 'player' | 'slime' | 'golden_slime' | 'silver_slime' | 'goblin' | 'skeleton' | 'golem' | 'dragon' | 'merchant' | 'hellhound' | 'vampire' | 'demon' | 'archdemon' | 'demon_king';
 
 export interface Entity {
@@ -56,6 +58,7 @@ export interface Entity {
   width?: number;
   height?: number;
   stunTurns?: number;
+  job?: JobType;
 }
 
 export interface Particle {

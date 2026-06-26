@@ -85,7 +85,6 @@ let closeItemDetailBtn: HTMLButtonElement;
 let itemDetailCloseBtn: HTMLButtonElement;
 let itemDetailUseBtn: HTMLButtonElement;
 let itemDetailDropBtn: HTMLButtonElement;
-let itemDetailSymbol: HTMLElement;
 let itemDetailName: HTMLElement;
 let itemDetailType: HTMLElement;
 let itemDetailValue: HTMLElement;
@@ -186,7 +185,6 @@ window.addEventListener('DOMContentLoaded', () => {
   itemDetailCloseBtn = document.getElementById('item-detail-close-btn') as HTMLButtonElement;
   itemDetailUseBtn = document.getElementById('item-detail-use-btn') as HTMLButtonElement;
   itemDetailDropBtn = document.getElementById('item-detail-drop-btn') as HTMLButtonElement;
-  itemDetailSymbol = document.getElementById('item-detail-symbol')!;
   itemDetailName = document.getElementById('item-detail-name')!;
   itemDetailType = document.getElementById('item-detail-type')!;
   itemDetailValue = document.getElementById('item-detail-value')!;
@@ -698,11 +696,31 @@ function updateHUD() {
   }
 
   // Combat Stats (show items additions)
+  const isGuardian = player.job === 'guardian';
   const weaponBoost = engine.equippedWeapon?.value || 0;
   const armorBoost = engine.equippedArmor?.value || 0;
   
-  statAtt.innerText = `${player.att}${weaponBoost > 0 ? ` (+${weaponBoost})` : ''}`;
-  statDef.innerText = `${player.def}${armorBoost > 0 ? ` (+${armorBoost})` : ''}`;
+  if (isGuardian) {
+    statAtt.innerText = `${player.att}`;
+    const totalDefBoost = armorBoost + weaponBoost;
+    statDef.innerText = `${player.def}${totalDefBoost > 0 ? ` (+${totalDefBoost})` : ''}`;
+  } else {
+    statAtt.innerText = `${player.att}${weaponBoost > 0 ? ` (+${weaponBoost})` : ''}`;
+    statDef.innerText = `${player.def}${armorBoost > 0 ? ` (+${armorBoost})` : ''}`;
+  }
+
+  // Dynamically change equipment labels based on job (without bracket symbols)
+  const weaponLabel = document.getElementById('equip-weapon-label');
+  const armorLabel = document.getElementById('equip-armor-label');
+  if (weaponLabel && armorLabel) {
+    if (isGuardian) {
+      weaponLabel.innerHTML = `盾(副) <kbd class="key-hint">Alt+W</kbd> :`;
+      armorLabel.innerHTML = `盾(主) <kbd class="key-hint">Alt+A</kbd> :`;
+    } else {
+      weaponLabel.innerHTML = `武器 <kbd class="key-hint">Alt+W</kbd> :`;
+      armorLabel.innerHTML = `防具 <kbd class="key-hint">Alt+A</kbd> :`;
+    }
+  }
 
   // Equipped Items UI
   if (engine.equippedWeapon) {
@@ -803,23 +821,16 @@ function updateHUD() {
     const infoDiv = document.createElement('div');
     infoDiv.className = 'item-info';
     
-    const symbolSpan = document.createElement('span');
-    symbolSpan.className = 'item-symbol';
-    symbolSpan.style.color = item.color;
-    symbolSpan.innerText = item.symbol;
-    
     const detailsDiv = document.createElement('div');
     detailsDiv.className = 'item-details';
     
     const nameSpan = document.createElement('span');
     nameSpan.className = 'item-name';
     nameSpan.style.color = item.color;
-    const durText = item.durability !== undefined ? ` [耐久:${item.durability}/${item.maxDurability}]` : '';
-    nameSpan.innerText = `${item.name}${durText}`;
+    nameSpan.innerText = item.name;
     
     detailsDiv.appendChild(nameSpan);
     
-    infoDiv.appendChild(symbolSpan);
     infoDiv.appendChild(detailsDiv);
 
     // Actions
@@ -981,11 +992,6 @@ function renderShop() {
     const infoDiv = document.createElement('div');
     infoDiv.className = 'shop-item-info';
 
-    const symbolSpan = document.createElement('span');
-    symbolSpan.className = 'shop-item-symbol';
-    symbolSpan.style.color = item.color;
-    symbolSpan.innerText = item.symbol;
-
     const detailsDiv = document.createElement('div');
     detailsDiv.className = 'shop-item-details';
 
@@ -1000,7 +1006,6 @@ function renderShop() {
 
     detailsDiv.appendChild(nameSpan);
     detailsDiv.appendChild(descSpan);
-    infoDiv.appendChild(symbolSpan);
     infoDiv.appendChild(detailsDiv);
 
     const buyDiv = document.createElement('div');
@@ -1074,11 +1079,6 @@ function renderShop() {
       const infoDiv = document.createElement('div');
       infoDiv.className = 'shop-item-info';
 
-      const symbolSpan = document.createElement('span');
-      symbolSpan.className = 'shop-item-symbol';
-      symbolSpan.style.color = item.color;
-      symbolSpan.innerText = item.symbol;
-
       const detailsDiv = document.createElement('div');
       detailsDiv.className = 'shop-item-details';
 
@@ -1093,7 +1093,6 @@ function renderShop() {
 
       detailsDiv.appendChild(nameSpan);
       detailsDiv.appendChild(descSpan);
-      infoDiv.appendChild(symbolSpan);
       infoDiv.appendChild(detailsDiv);
 
       const sellDiv = document.createElement('div');
@@ -1152,9 +1151,6 @@ function openItemDetail(index: number, type: 'inventory' | 'weapon' | 'armor' = 
   if (!item) return;
   
   // Set content
-  itemDetailSymbol.innerText = item.symbol;
-  itemDetailSymbol.style.color = item.color;
-  
   itemDetailName.innerText = item.name;
   itemDetailName.style.color = item.color;
   
