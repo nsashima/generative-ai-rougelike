@@ -1,6 +1,6 @@
-import { GameEngine } from './game';
+import { GameEngine } from './logic/game';
 import { DungeonRenderer } from './renderer';
-import { soundEffects } from './sound';
+import { soundEffects } from './logic/sound';
 import { Item } from './types';
 
 // DOM elements

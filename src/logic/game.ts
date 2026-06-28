@@ -1,6 +1,7 @@
-import { GameState, Entity, Item } from './types';
+import { GameState, Entity, Item } from '../types';
 import { generateDungeon, computeFOV } from './dungeon';
 import { soundEffects } from './sound';
+import { weaponNames, weaponColors, armorNames, armorColors } from '../data/items';
 
 const DUNGEON_WIDTH = 45;
 const DUNGEON_HEIGHT = 30;
@@ -537,7 +538,7 @@ export class GameEngine {
     const player = this.state.player;
 
     switch (item.type) {
-      case 'potion_heal':
+      case 'potion_heal': {
         const healPct = item.value; // 40%
         const healAmt = Math.floor(player.maxHp * (healPct / 100));
         const oldHp = player.hp;
@@ -548,6 +549,7 @@ export class GameEngine {
         soundEffects.playHeal();
         this.state.inventory.splice(index, 1);
         break;
+      }
 
       case 'potion_strength':
         player.att += item.value;
@@ -591,7 +593,7 @@ export class GameEngine {
         this.spawnParticle(player.x, player.y, '#60a5fa', 8, 'Equip Shield');
         break;
 
-      case 'scroll_teleport':
+      case 'scroll_teleport': {
         // Teleport to a random floor tile
         let tx = 0;
         let ty = 0;
@@ -615,8 +617,9 @@ export class GameEngine {
         soundEffects.playStairs();
         this.state.inventory.splice(index, 1);
         break;
+      }
 
-      case 'scroll_fireball':
+      case 'scroll_fireball': {
         // Find closest enemy in FOV
         let closestEnemy: Entity | null = null;
         let minDist = 9999;
@@ -648,6 +651,7 @@ export class GameEngine {
           this.addMessage('視界の中に火炎球を放てる敵がいない！');
         }
         break;
+      }
 
       case 'scroll_sleep': {
         let stunnedCount = 0;
@@ -842,46 +846,12 @@ export class GameEngine {
 
     const level = this.state.dungeonLevel;
     
-    // Weapon details matching dungeon levels 1-10
-    const weaponNames = [
-      '錆びた剣',          // level 1
-      '鉄の剣',            // level 2
-      '鋼鉄の剣',          // level 3
-      'ルーンブレード',    // level 4
-      'エクスカリバー',    // level 5
-      '魔導の杖',          // level 6
-      '竜殺しの大剣',      // level 7
-      '魔剣レーヴァテイン',// level 8
-      '光の聖剣アルテマ',  // level 9
-      '創世神の剣'         // level 10
-    ];
-    const weaponColors = [
-      '#a8a29e', '#cbd5e1', '#94a3b8', '#60a5fa', '#a855f7',
-      '#34d399', '#f43f5e', '#fb923c', '#facc15', '#ec4899'
-    ];
     const wIdx = Math.max(0, Math.min(level - 1, 9));
     const weaponName = weaponNames[wIdx];
     const weaponColor = weaponColors[wIdx];
     const weaponValue = Math.floor(2 + level * 1.3); // Reduced power (was 2 + level * 2.0)
     const weaponDurability = 15 + level * 2;
 
-    // Armor details matching dungeon levels 1-10
-    const armorNames = [
-      '古びた盾',          // level 1
-      '鉄の盾',            // level 2
-      '鋼鉄の盾',          // level 3
-      '騎士の盾',          // level 4
-      'イージスの盾',      // level 5
-      '紅蓮の鎧',          // level 6
-      '影の防具',          // level 7
-      '魔王の盾',          // level 8
-      '光の盾ソール',      // level 9
-      '神の鎧ゴッドアーマー' // level 10
-    ];
-    const armorColors = [
-      '#78716c', '#94a3b8', '#64748b', '#3b82f6', '#a855f7',
-      '#ef4444', '#312e81', '#581c87', '#f59e0b', '#ec4899'
-    ];
     const aIdx = Math.max(0, Math.min(level - 1, 9));
     const armorName = armorNames[aIdx];
     const armorColor = armorColors[aIdx];
