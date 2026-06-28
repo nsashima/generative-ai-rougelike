@@ -180,6 +180,7 @@ export class GameEngine {
         this.equippedWeapon.durability--;
         if (this.equippedWeapon.durability <= 0) {
           this.addMessage(`【破損】${this.equippedWeapon.name} が壊れて消滅してしまった！`);
+          this.spawnParticle(this.state.player.x, this.state.player.y, '#f43f5e', 25, `${this.equippedWeapon.name} 破損！`);
           this.equippedWeapon = null;
           soundEffects.playDeath(); // play crash/shatter sound
         }
@@ -395,6 +396,7 @@ export class GameEngine {
         this.equippedArmor.durability--;
         if (this.equippedArmor.durability <= 0) {
           this.addMessage(`【破損】${this.equippedArmor.name} が壊れて消滅してしまった！`);
+          this.spawnParticle(player.x, player.y, '#f43f5e', 25, `${this.equippedArmor.name} 破損！`);
           this.equippedArmor = null;
           soundEffects.playDeath(); // play crash/shatter sound
         }
