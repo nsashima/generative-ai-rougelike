@@ -330,13 +330,7 @@ function setupEvents() {
     // Global keys (work in any status)
     if (e.code === 'KeyM') {
       const isEnabled = soundEffects.toggle();
-      if (isEnabled) {
-        soundToggleBtn.classList.remove('muted');
-        soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>';
-      } else {
-        soundToggleBtn.classList.add('muted');
-        soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ <kbd class="key-hint">M</kbd>';
-      }
+      updateSoundButtonUI(isEnabled);
       return;
     }
     if (e.code === 'KeyR') {
@@ -641,15 +635,44 @@ function setupEvents() {
   }
 
   // Sound toggle button
-  soundToggleBtn.addEventListener('click', () => {
-    const isEnabled = soundEffects.toggle();
+  const mSoundToggleBtn = document.getElementById('m-sound-toggle-btn');
+  const mHelpBtn = document.getElementById('m-help-btn');
+
+  const updateSoundButtonUI = (isEnabled: boolean) => {
     if (isEnabled) {
       soundToggleBtn.classList.remove('muted');
       soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>';
+      if (mSoundToggleBtn) mSoundToggleBtn.innerHTML = '🔊 サウンドオン';
     } else {
       soundToggleBtn.classList.add('muted');
       soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ <kbd class="key-hint">M</kbd>';
+      if (mSoundToggleBtn) mSoundToggleBtn.innerHTML = '🔇 サウンドオフ';
     }
+  };
+
+  soundToggleBtn.addEventListener('click', () => {
+    const isEnabled = soundEffects.toggle();
+    updateSoundButtonUI(isEnabled);
+  });
+
+  mSoundToggleBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const isEnabled = soundEffects.toggle();
+    updateSoundButtonUI(isEnabled);
+  });
+  mSoundToggleBtn?.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const isEnabled = soundEffects.toggle();
+    updateSoundButtonUI(isEnabled);
+  });
+
+  mHelpBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    toggleHelp();
+  });
+  mHelpBtn?.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    toggleHelp();
   });
 
   // Restart button
