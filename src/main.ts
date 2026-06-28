@@ -252,6 +252,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // Start the typing prologue intro
+  window.focus();
   startPrologue();
 });
 
@@ -343,6 +344,29 @@ function setupEvents() {
       return;
     }
 
+    // Shift + S to save and suspend game
+    if (e.shiftKey && e.code === 'KeyS' && (engine.state.status === 'playing' || engine.state.status === 'shop')) {
+      e.preventDefault();
+      saveGame();
+      return;
+    }
+
+    // KeyN to start new game when on title screen
+    if ((e.code === 'KeyN' || e.key === 'n' || e.key === 'N') && !startOverlay.classList.contains('hidden')) {
+      if (!startGameBtn.classList.contains('hidden')) {
+        e.preventDefault();
+        const hasSave = localStorage.getItem('generative-ai-roguelike-save') !== null;
+        if (hasSave) {
+          if (confirm('前回のセーブデータを消去して、最初から冒険を始めますか？')) {
+            startGameBtn.click();
+          }
+        } else {
+          startGameBtn.click();
+        }
+        return;
+      }
+    }
+
     if (engine.state.status !== 'playing') {
       if (engine.state.status === 'shop') {
         if (e.key === 'Escape') {
@@ -422,11 +446,12 @@ function setupEvents() {
         // If game is not active, Enter or Space restarts or starts the game
         if (e.key === 'Enter' || e.key === ' ') {
           if (!startOverlay.classList.contains('hidden')) {
-            if (!startGameBtn.classList.contains('hidden')) {
-              localStorage.removeItem('generative-ai-roguelike-save');
-              soundEffects.playFanfare();
-              engine.startGame();
-              updateHUD();
+            if (!resumeGameBtn.classList.contains('hidden')) {
+              e.preventDefault();
+              resumeGameBtn.click();
+            } else if (!startGameBtn.classList.contains('hidden')) {
+              e.preventDefault();
+              startGameBtn.click();
             }
           } else {
             handleRestart();
@@ -1474,6 +1499,7 @@ function startPrologue() {
   startGameBtn.classList.add('hidden');
   resumeGameBtn.classList.add('hidden');
   skipPrologueBtn.classList.remove('hidden');
+  skipPrologueBtn.focus();
   
   let charIndex = 0;
   
@@ -1650,8 +1676,13 @@ function saveGame() {
   try {
     localStorage.setItem('generative-ai-roguelike-save', JSON.stringify(saveData));
     alert('セーブが完了しました。タイトル画面に戻ります。');
-    // Reload to clear variables and return to start overlay cleanly
-    window.location.reload();
+    
+    // Stop renderer, reset game engine state, show start overlay and trigger prologue to maintain active focus without full page reload
+    renderer.stop();
+    engine.reset();
+    startOverlay.classList.remove('hidden');
+    startPrologue();
+    updateHUD();
   } catch (error) {
     console.error('セーブデータの保存に失敗しました:', error);
     alert('セーブに失敗しました。');
