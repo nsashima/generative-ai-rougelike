@@ -200,6 +200,10 @@ canvas {
   gap: 12px;
 }
 
+.mobile-system-settings {
+  display: none;
+}
+
 .dpad {
   display: grid;
   grid-template-areas: 
@@ -1111,6 +1115,30 @@ canvas {
   .item-name {
     font-size: 0.95rem !important;
     font-weight: 600 !important;
+  }
+
+  /* Compact Header and shift sound/help to Status Card on Mobile */
+  #sound-toggle-btn, #help-btn {
+    display: none !important;
+  }
+  
+  .app-header .btn {
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.72rem !important;
+  }
+  
+  .mobile-system-settings {
+    display: flex !important;
+    gap: 8px;
+    margin-top: 15px;
+    justify-content: center;
+  }
+  
+  .mobile-system-settings .trigger-btn {
+    width: 115px !important;
+    height: 32px !important;
+    justify-content: center !important;
+    font-size: 0.75rem !important;
   }
 
   /* Ensure modals appear on top of the Mobile HUD Modal */

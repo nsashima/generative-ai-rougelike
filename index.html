@@ -18,6 +18,7 @@
         <h1>サシマのシレン</h1>
       </div>
       <div class="controls-top">
+        <button id="save-btn" class="btn btn-emerald hidden" title="セーブしてタイトルに戻る">セーブ中断</button>
         <button id="sound-toggle-btn" class="icon-btn" title="音声を切替 (M)">
           <span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>
         </button>
@@ -176,6 +177,7 @@
               
               <div class="start-actions">
                 <button id="start-game-btn" class="btn btn-primary btn-lg hidden">冒険を始める <kbd class="key-hint">Enter</kbd></button>
+                <button id="resume-game-btn" class="btn btn-emerald btn-lg hidden">前回の冒険を再開</button>
                 <button id="skip-prologue-btn" class="btn btn-secondary">ストーリーをスキップ <kbd class="key-hint">Space</kbd></button>
               </div>
             </div>
@@ -319,6 +321,12 @@
               <span id="equip-armor-label" class="equip-label">防具 <kbd class="key-hint">Alt+A</kbd> :</span>
               <span id="equip-armor" class="equip-name empty">未装備</span>
             </div>
+          </div>
+          
+          <!-- Mobile System Settings (visible only on mobile) -->
+          <div class="mobile-system-settings">
+            <button id="m-sound-toggle-btn" class="trigger-btn">🔊 サウンド切替</button>
+            <button id="m-help-btn" class="trigger-btn">❓ ヘルプ表示</button>
           </div>
         </div>
 

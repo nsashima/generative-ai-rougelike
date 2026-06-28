@@ -52,6 +52,10 @@ let inventoryList: HTMLElement;
 // Log elements
 let logFeed: HTMLElement;
 
+const GAME_VERSION = __APP_VERSION__;
+let saveBtn: HTMLButtonElement;
+let resumeGameBtn: HTMLButtonElement;
+
 // Overlay elements
 let startOverlay: HTMLElement;
 let startGameBtn: HTMLButtonElement;
@@ -122,6 +126,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   soundToggleBtn = document.getElementById('sound-toggle-btn') as HTMLButtonElement;
   restartBtn = document.getElementById('restart-btn') as HTMLButtonElement;
+  saveBtn = document.getElementById('save-btn') as HTMLButtonElement;
 
   statFloor = document.getElementById('stat-floor')!;
   statGold = document.getElementById('stat-gold')!;
@@ -164,6 +169,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Start overlay elements
   startOverlay = document.getElementById('start-overlay')!;
   startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement;
+  resumeGameBtn = document.getElementById('resume-game-btn') as HTMLButtonElement;
 
   // Gameover overlay elements
   gameoverOverlay = document.getElementById('gameover-overlay')!;
@@ -324,13 +330,7 @@ function setupEvents() {
     // Global keys (work in any status)
     if (e.code === 'KeyM') {
       const isEnabled = soundEffects.toggle();
-      if (isEnabled) {
-        soundToggleBtn.classList.remove('muted');
-        soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>';
-      } else {
-        soundToggleBtn.classList.add('muted');
-        soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ <kbd class="key-hint">M</kbd>';
-      }
+      updateSoundButtonUI(isEnabled);
       return;
     }
     if (e.code === 'KeyR') {
@@ -423,6 +423,7 @@ function setupEvents() {
         if (e.key === 'Enter' || e.key === ' ') {
           if (!startOverlay.classList.contains('hidden')) {
             if (!startGameBtn.classList.contains('hidden')) {
+              localStorage.removeItem('generative-ai-roguelike-save');
               soundEffects.playFanfare();
               engine.startGame();
               updateHUD();
@@ -634,15 +635,44 @@ function setupEvents() {
   }
 
   // Sound toggle button
-  soundToggleBtn.addEventListener('click', () => {
-    const isEnabled = soundEffects.toggle();
+  const mSoundToggleBtn = document.getElementById('m-sound-toggle-btn');
+  const mHelpBtn = document.getElementById('m-help-btn');
+
+  const updateSoundButtonUI = (isEnabled: boolean) => {
     if (isEnabled) {
       soundToggleBtn.classList.remove('muted');
       soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>';
+      if (mSoundToggleBtn) mSoundToggleBtn.innerHTML = '🔊 サウンドオン';
     } else {
       soundToggleBtn.classList.add('muted');
       soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ <kbd class="key-hint">M</kbd>';
+      if (mSoundToggleBtn) mSoundToggleBtn.innerHTML = '🔇 サウンドオフ';
     }
+  };
+
+  soundToggleBtn.addEventListener('click', () => {
+    const isEnabled = soundEffects.toggle();
+    updateSoundButtonUI(isEnabled);
+  });
+
+  mSoundToggleBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const isEnabled = soundEffects.toggle();
+    updateSoundButtonUI(isEnabled);
+  });
+  mSoundToggleBtn?.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const isEnabled = soundEffects.toggle();
+    updateSoundButtonUI(isEnabled);
+  });
+
+  mHelpBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    toggleHelp();
+  });
+  mHelpBtn?.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    toggleHelp();
   });
 
   // Restart button
@@ -691,6 +721,7 @@ function setupEvents() {
 
   // Start game button click
   startGameBtn.addEventListener('click', () => {
+    localStorage.removeItem('generative-ai-roguelike-save');
     soundEffects.playFanfare();
     engine.startGame();
     updateHUD();
@@ -814,9 +845,26 @@ function setupEvents() {
       openItemDetail(0, 'armor');
     }
   });
+
+  // Save suspension click listener
+  saveBtn.addEventListener('click', () => {
+    saveGame();
+  });
+
+  // Resume game click listener
+  resumeGameBtn.addEventListener('click', () => {
+    const ok = loadGame();
+    if (ok) {
+      startOverlay.classList.add('hidden');
+      soundEffects.playFanfare();
+      renderer.start();
+      updateHUD();
+    }
+  });
 }
 
 function handleRestart() {
+  localStorage.removeItem('generative-ai-roguelike-save');
   renderer.stop();
   engine.reset();
   engine.startGame();
@@ -827,6 +875,15 @@ function handleRestart() {
 function updateHUD() {
   const state = engine.state;
   const player = state.player;
+
+  // Show save button only when actively playing or inside shop
+  if (saveBtn) {
+    if (state.status === 'playing' || state.status === 'shop') {
+      saveBtn.classList.remove('hidden');
+    } else {
+      saveBtn.classList.add('hidden');
+    }
+  }
 
   // Level statistics
   statFloor.innerText = `地下 ${state.dungeonLevel} 階`;
@@ -1415,6 +1472,7 @@ function startPrologue() {
   }
   isPrologueActive = true;
   startGameBtn.classList.add('hidden');
+  resumeGameBtn.classList.add('hidden');
   skipPrologueBtn.classList.remove('hidden');
   
   let charIndex = 0;
@@ -1463,6 +1521,12 @@ function finishPrologue() {
   
   startGameBtn.classList.remove('hidden');
   skipPrologueBtn.classList.add('hidden');
+  
+  // Show resume button if save data exists
+  const hasSave = localStorage.getItem('generative-ai-roguelike-save') !== null;
+  if (hasSave) {
+    resumeGameBtn.classList.remove('hidden');
+  }
   
   // Focus the start game button so that pressing Enter acts immediately
   startGameBtn.focus();
@@ -1554,6 +1618,93 @@ function switchTab(target: 'log' | 'inventory' | 'status') {
     tabStatus?.classList.add('active');
     contentStatus?.classList.add('active');
   }
+}
+
+function saveGame() {
+  if (engine.state.status !== 'playing' && engine.state.status !== 'shop') return;
+
+  engine.addMessage('【記録】冒険の記録（セーブ）を保存し、一時中断しました。');
+
+  const saveData = {
+    version: GAME_VERSION,
+    timestamp: Date.now(),
+    gameState: {
+      status: engine.state.status,
+      dungeonLevel: engine.state.dungeonLevel,
+      tiles: engine.state.tiles,
+      width: engine.state.width,
+      height: engine.state.height,
+      player: engine.state.player,
+      enemies: engine.state.enemies,
+      items: engine.state.items,
+      messages: engine.state.messages,
+      inventory: engine.state.inventory,
+      gold: engine.state.gold,
+      turn: engine.state.turn
+    },
+    equippedWeapon: engine.equippedWeapon,
+    equippedArmor: engine.equippedArmor,
+    currentShopItems: engine.currentShopItems
+  };
+
+  try {
+    localStorage.setItem('generative-ai-roguelike-save', JSON.stringify(saveData));
+    alert('セーブが完了しました。タイトル画面に戻ります。');
+    // Reload to clear variables and return to start overlay cleanly
+    window.location.reload();
+  } catch (error) {
+    console.error('セーブデータの保存に失敗しました:', error);
+    alert('セーブに失敗しました。');
+  }
+}
+
+function loadGame(): boolean {
+  const rawData = localStorage.getItem('generative-ai-roguelike-save');
+  if (!rawData) return false;
+
+  try {
+    let saveData = JSON.parse(rawData);
+    
+    // Version check and migration
+    if (saveData.version !== GAME_VERSION) {
+      console.warn(`古いバージョンのセーブデータ (${saveData.version}) を検出しました。`);
+      saveData = migrateSaveData(saveData, saveData.version, GAME_VERSION);
+    }
+
+    // Apply to engine
+    const state = saveData.gameState;
+    engine.state.status = state.status;
+    engine.state.dungeonLevel = state.dungeonLevel;
+    engine.state.tiles = state.tiles;
+    engine.state.width = state.width;
+    engine.state.height = state.height;
+    engine.state.player = state.player;
+    engine.state.enemies = state.enemies;
+    engine.state.items = state.items;
+    engine.state.messages = state.messages;
+    engine.state.inventory = state.inventory;
+    engine.state.gold = state.gold;
+    engine.state.turn = state.turn;
+
+    engine.equippedWeapon = saveData.equippedWeapon;
+    engine.equippedArmor = saveData.equippedArmor;
+    engine.currentShopItems = saveData.currentShopItems;
+
+    // Delete save data immediately upon load (Roguelike suspend-resume rule)
+    localStorage.removeItem('generative-ai-roguelike-save');
+    return true;
+  } catch (error) {
+    console.error('ロード処理中にエラーが発生しました:', error);
+    alert('セーブデータの読み込みに失敗しました。');
+    return false;
+  }
+}
+
+function migrateSaveData(saveData: any, fromVersion: string, toVersion: string): any {
+  // Migration steps for schema changes
+  console.log(`Migrating save data from version ${fromVersion} to ${toVersion}`);
+  saveData.version = toVersion;
+  return saveData;
 }
 
 
