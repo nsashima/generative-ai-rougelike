@@ -18,6 +18,7 @@
         <h1>サシマのシレン</h1>
       </div>
       <div class="controls-top">
+        <button id="save-btn" class="btn btn-emerald hidden" title="セーブしてタイトルに戻る">セーブ中断</button>
         <button id="sound-toggle-btn" class="icon-btn" title="音声を切替 (M)">
           <span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>
         </button>
@@ -27,6 +28,22 @@
         <button id="restart-btn" class="btn btn-secondary">リトライ <kbd class="key-hint">R</kbd></button>
       </div>
     </header>
+
+    <!-- Mobile Status Bar (visible only on mobile) -->
+    <div class="mobile-status-bar">
+      <div class="m-stat">
+        <span class="m-label">HP</span>
+        <div class="m-hp-progress">
+          <div id="m-hp-bar-fill" class="m-hp-fill" style="width: 100%"></div>
+          <span id="m-hp-val" class="m-value">40 / 40</span>
+        </div>
+      </div>
+      <div class="m-stat-row">
+        <div class="m-stat"><span class="m-label">階層:</span> <span id="m-floor-val" class="m-value highlight">地下 1 階</span></div>
+        <div class="m-stat"><span class="m-label">金:</span> <span id="m-gold-val" class="m-value gold">0 G</span></div>
+        <div class="m-stat"><span class="m-label">Lvl:</span> <span id="m-level-val" class="m-value">1</span></div>
+      </div>
+    </div>
 
     <main class="game-container">
       <!-- Left side: Viewport + Bottom Bar (Logs & Dpad) -->
@@ -160,6 +177,7 @@
               
               <div class="start-actions">
                 <button id="start-game-btn" class="btn btn-primary btn-lg hidden">冒険を始める <kbd class="key-hint">Enter</kbd></button>
+                <button id="resume-game-btn" class="btn btn-emerald btn-lg hidden">前回の冒険を再開</button>
                 <button id="skip-prologue-btn" class="btn btn-secondary">ストーリーをスキップ <kbd class="key-hint">Space</kbd></button>
               </div>
             </div>
@@ -202,10 +220,10 @@
           </div>
         </div>
         
-        <!-- Bottom bar under canvas -->
-        <div class="bottom-bar">
+        <!-- Bottom bar under canvas (PC Layout) -->
+        <div id="pc-bottom-bar" class="bottom-bar">
           <!-- Logs Panel -->
-          <div class="hud-card logs-card">
+          <div id="logs-card-el" class="hud-card logs-card">
             <h2>冒険の記録 (ログ)</h2>
             <div id="log-feed" class="log-feed">
               <!-- Dynamically populated -->
@@ -213,22 +231,39 @@
           </div>
           
           <!-- On-screen directional pad for touch / mobile / ease of play -->
-          <div class="mobile-controls">
+          <div id="pc-controls-el" class="mobile-controls dpad-right">
+            <!-- D-pad (3x3 grid) -->
             <div class="dpad">
               <button id="ctrl-up" class="dpad-btn up" title="上">▲</button>
               <button id="ctrl-left" class="dpad-btn left" title="左">◀</button>
-              <button id="ctrl-down" class="dpad-btn down" title="下">▼</button>
+              <button id="ctrl-wait" class="dpad-btn wait" title="待機">⌛</button>
               <button id="ctrl-right" class="dpad-btn right" title="右">▶</button>
-              <button id="ctrl-descend" class="dpad-btn action" title="階段を下りる">下りる (>)</button>
+              <button id="ctrl-down" class="dpad-btn down" title="下">▼</button>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="mobile-action-buttons">
+              <button id="ctrl-descend" class="action-btn descend" title="階段を下りる">
+                <span class="btn-icon">🪜</span>
+                <span class="btn-text">階段下り (>)</span>
+              </button>
+            </div>
+            
+            <!-- Mobile Menu Triggers (visible only on mobile) -->
+            <div id="mobile-menu-triggers" class="mobile-menu-triggers">
+              <button id="trigger-btn-inventory" class="trigger-btn">🎒 バッグ</button>
+              <button id="trigger-btn-status" class="trigger-btn">📊 ステータス</button>
+              <button id="trigger-btn-log" class="trigger-btn">💬 ログ</button>
+              <button id="trigger-btn-layout" class="trigger-btn layout-toggle">🔄 左右反転</button>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Right side: Sidebar HUD -->
-      <section class="game-hud">
+      <!-- Right side: Sidebar HUD (PC Layout) -->
+      <section id="pc-hud-el" class="game-hud">
         <!-- Status & Equipment Card -->
-        <div class="hud-card character-card">
+        <div id="character-card-el" class="hud-card character-card">
           <h2>ステータス & 装備</h2>
           <div class="status-grid">
             <div class="status-item">
@@ -287,10 +322,16 @@
               <span id="equip-armor" class="equip-name empty">未装備</span>
             </div>
           </div>
+          
+          <!-- Mobile System Settings (visible only on mobile) -->
+          <div class="mobile-system-settings">
+            <button id="m-sound-toggle-btn" class="trigger-btn">🔊 サウンド切替</button>
+            <button id="m-help-btn" class="trigger-btn">❓ ヘルプ表示</button>
+          </div>
         </div>
 
         <!-- Inventory Card -->
-        <div class="hud-card inventory-card">
+        <div id="inventory-card-el" class="hud-card inventory-card">
           <div class="inventory-header">
             <h2>インベントリ</h2>
             <span id="inventory-count" class="count-badge">0 / 10</span>
@@ -317,6 +358,23 @@
           <button id="db-map-btn" class="btn btn-secondary btn-sm">マップ全開</button>
           <button id="db-gold-btn" class="btn btn-secondary btn-sm">ゴールド +1000</button>
           <button id="db-close-btn" class="btn btn-danger btn-sm">閉じる</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Mobile Fullscreen HUD Modal (visible only on mobile) -->
+    <div id="mobile-hud-container" class="mobile-hud-modal">
+      <div class="mobile-hud-modal-content">
+        <div class="mobile-hud-header">
+          <div class="mobile-tabs-nav">
+            <button id="tab-btn-log" class="tab-btn active">💬 ログ</button>
+            <button id="tab-btn-inventory" class="tab-btn">🎒 バッグ</button>
+            <button id="tab-btn-status" class="tab-btn">📊 ステータス</button>
+          </div>
+          <button id="close-mobile-hud-btn" class="mobile-hud-close-btn">&times;</button>
+        </div>
+        <div id="mobile-tab-content-area" class="mobile-tab-content-area">
+          <!-- Cards will dynamically shift here on mobile screen -->
         </div>
       </div>
     </div>

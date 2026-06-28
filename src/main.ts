@@ -8,6 +8,14 @@ let canvas: HTMLCanvasElement;
 let engine: GameEngine;
 let renderer: DungeonRenderer;
 
+// Mobile Tab UI elements
+let tabLog: HTMLElement | null = null;
+let tabInventory: HTMLElement | null = null;
+let tabStatus: HTMLElement | null = null;
+let contentLog: HTMLElement | null = null;
+let contentInventory: HTMLElement | null = null;
+let contentStatus: HTMLElement | null = null;
+
 // Top bar controls
 let soundToggleBtn: HTMLButtonElement;
 let restartBtn: HTMLButtonElement;
@@ -44,6 +52,10 @@ let inventoryList: HTMLElement;
 // Log elements
 let logFeed: HTMLElement;
 
+const GAME_VERSION = __APP_VERSION__;
+let saveBtn: HTMLButtonElement;
+let resumeGameBtn: HTMLButtonElement;
+
 // Overlay elements
 let startOverlay: HTMLElement;
 let startGameBtn: HTMLButtonElement;
@@ -77,6 +89,7 @@ let ctrlUp: HTMLButtonElement;
 let ctrlDown: HTMLButtonElement;
 let ctrlLeft: HTMLButtonElement;
 let ctrlRight: HTMLButtonElement;
+let ctrlWait: HTMLButtonElement;
 let ctrlDescend: HTMLButtonElement;
 
 // Item Detail elements
@@ -113,6 +126,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   soundToggleBtn = document.getElementById('sound-toggle-btn') as HTMLButtonElement;
   restartBtn = document.getElementById('restart-btn') as HTMLButtonElement;
+  saveBtn = document.getElementById('save-btn') as HTMLButtonElement;
 
   statFloor = document.getElementById('stat-floor')!;
   statGold = document.getElementById('stat-gold')!;
@@ -133,6 +147,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
   logFeed = document.getElementById('log-feed')!;
 
+  // Mobile Tab elements binding
+  tabLog = document.getElementById('tab-btn-log');
+  tabInventory = document.getElementById('tab-btn-inventory');
+  tabStatus = document.getElementById('tab-btn-status');
+
+  contentLog = document.getElementById('logs-card-el');
+  contentInventory = document.getElementById('inventory-card-el');
+  contentStatus = document.getElementById('character-card-el');
+
   shopModal = document.getElementById('shop-modal')!;
   closeShopBtn = document.getElementById('close-shop-btn') as HTMLButtonElement;
   shopGoldVal = document.getElementById('shop-gold-val')!;
@@ -146,6 +169,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Start overlay elements
   startOverlay = document.getElementById('start-overlay')!;
   startGameBtn = document.getElementById('start-game-btn') as HTMLButtonElement;
+  resumeGameBtn = document.getElementById('resume-game-btn') as HTMLButtonElement;
 
   // Gameover overlay elements
   gameoverOverlay = document.getElementById('gameover-overlay')!;
@@ -168,6 +192,7 @@ window.addEventListener('DOMContentLoaded', () => {
   ctrlDown = document.getElementById('ctrl-down') as HTMLButtonElement;
   ctrlLeft = document.getElementById('ctrl-left') as HTMLButtonElement;
   ctrlRight = document.getElementById('ctrl-right') as HTMLButtonElement;
+  ctrlWait = document.getElementById('ctrl-wait') as HTMLButtonElement;
   ctrlDescend = document.getElementById('ctrl-descend') as HTMLButtonElement;
 
   // Debug elements
@@ -208,6 +233,23 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Initial HUD render
   updateHUD();
+
+  // Load saved D-pad layout (default: right)
+  const savedDpadLayout = localStorage.getItem('dpad-right-layout');
+  const pcControlsEl = document.getElementById('pc-controls-el');
+  if (savedDpadLayout === 'false') {
+    pcControlsEl?.classList.remove('dpad-right');
+  } else {
+    pcControlsEl?.classList.add('dpad-right');
+  }
+
+  // Initialize responsive layouts
+  adjustLayoutForDevice();
+  renderer.resizeCanvas();
+  window.addEventListener('resize', () => {
+    adjustLayoutForDevice();
+    renderer.resizeCanvas();
+  });
 
   // Start the typing prologue intro
   startPrologue();
@@ -288,13 +330,7 @@ function setupEvents() {
     // Global keys (work in any status)
     if (e.code === 'KeyM') {
       const isEnabled = soundEffects.toggle();
-      if (isEnabled) {
-        soundToggleBtn.classList.remove('muted');
-        soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>';
-      } else {
-        soundToggleBtn.classList.add('muted');
-        soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ <kbd class="key-hint">M</kbd>';
-      }
+      updateSoundButtonUI(isEnabled);
       return;
     }
     if (e.code === 'KeyR') {
@@ -387,6 +423,7 @@ function setupEvents() {
         if (e.key === 'Enter' || e.key === ' ') {
           if (!startOverlay.classList.contains('hidden')) {
             if (!startGameBtn.classList.contains('hidden')) {
+              localStorage.removeItem('generative-ai-roguelike-save');
               soundEffects.playFanfare();
               engine.startGame();
               updateHUD();
@@ -490,23 +527,152 @@ function setupEvents() {
     updateHUD();
   });
 
-  // Mobile pad clicks
-  ctrlUp.addEventListener('click', () => { engine.movePlayer(0, -1); updateHUD(); });
-  ctrlDown.addEventListener('click', () => { engine.movePlayer(0, 1); updateHUD(); });
-  ctrlLeft.addEventListener('click', () => { engine.movePlayer(-1, 0); updateHUD(); });
-  ctrlRight.addEventListener('click', () => { engine.movePlayer(1, 0); updateHUD(); });
-  ctrlDescend.addEventListener('click', () => { engine.descendStairs(); updateHUD(); });
+  // Mobile pad clicks and touches (latency-free touch handlers)
+  const bindTouchOrClick = (btn: HTMLButtonElement, action: () => void) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      action();
+      updateHUD();
+    });
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      action();
+      updateHUD();
+    });
+  };
+
+  bindTouchOrClick(ctrlUp, () => engine.movePlayer(0, -1));
+  bindTouchOrClick(ctrlDown, () => engine.movePlayer(0, 1));
+  bindTouchOrClick(ctrlLeft, () => engine.movePlayer(-1, 0));
+  bindTouchOrClick(ctrlRight, () => engine.movePlayer(1, 0));
+  bindTouchOrClick(ctrlWait, () => {
+    engine.addMessage('待機した。');
+    engine.state.turn++;
+    engine.processEnemyTurns();
+  });
+  bindTouchOrClick(ctrlDescend, () => engine.descendStairs());
+
+  // Mobile Tab switching logic
+  tabLog?.addEventListener('click', (e) => { e.preventDefault(); switchTab('log'); });
+  tabInventory?.addEventListener('click', (e) => { e.preventDefault(); switchTab('inventory'); });
+  tabStatus?.addEventListener('click', (e) => { e.preventDefault(); switchTab('status'); });
+
+  tabLog?.addEventListener('touchstart', (e) => { e.preventDefault(); switchTab('log'); });
+  tabInventory?.addEventListener('touchstart', (e) => { e.preventDefault(); switchTab('inventory'); });
+  tabStatus?.addEventListener('touchstart', (e) => { e.preventDefault(); switchTab('status'); });
+
+  // Mobile HUD Modal triggers and close button
+  const closeMobileHudBtn = document.getElementById('close-mobile-hud-btn');
+  const mobileHudModal = document.getElementById('mobile-hud-container');
+
+  closeMobileHudBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    mobileHudModal?.classList.remove('active');
+  });
+  closeMobileHudBtn?.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    mobileHudModal?.classList.remove('active');
+  });
+
+  const bindTrigger = (id: string, targetTab: 'log' | 'inventory' | 'status') => {
+    const btn = document.getElementById(id);
+    btn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchTab(targetTab);
+      mobileHudModal?.classList.add('active');
+    });
+    btn?.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      switchTab(targetTab);
+      mobileHudModal?.classList.add('active');
+    });
+  };
+
+  bindTrigger('trigger-btn-log', 'log');
+  bindTrigger('trigger-btn-inventory', 'inventory');
+  bindTrigger('trigger-btn-status', 'status');
+
+  // Layout reverse toggle
+  const layoutToggleBtn = document.getElementById('trigger-btn-layout');
+  const controlsEl = document.getElementById('pc-controls-el');
+  const toggleLayout = () => {
+    if (controlsEl) {
+      const isRight = controlsEl.classList.toggle('dpad-right');
+      localStorage.setItem('dpad-right-layout', isRight ? 'true' : 'false');
+    }
+  };
+  layoutToggleBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    toggleLayout();
+  });
+  layoutToggleBtn?.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    toggleLayout();
+  });
+
+  // Prevent contextmenu, double-tap zoom and touch-drag selections inside mobile HUD modal
+  if (mobileHudModal) {
+    mobileHudModal.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+    
+    // Prevent double-tap to zoom behavior programmatically for older webviews
+    let lastTouchTime = 0;
+    mobileHudModal.addEventListener('touchstart', (e) => {
+      const currentTime = performance.now();
+      const timeDiff = currentTime - lastTouchTime;
+      if (timeDiff > 0 && timeDiff < 300) {
+        // Double-tap detected
+        e.preventDefault();
+      }
+      lastTouchTime = currentTime;
+    }, { passive: false });
+    
+    // Disable text selection drag behavior during touches inside the modal
+    mobileHudModal.addEventListener('selectstart', (e) => {
+      e.preventDefault();
+    });
+  }
 
   // Sound toggle button
-  soundToggleBtn.addEventListener('click', () => {
-    const isEnabled = soundEffects.toggle();
+  const mSoundToggleBtn = document.getElementById('m-sound-toggle-btn');
+  const mHelpBtn = document.getElementById('m-help-btn');
+
+  const updateSoundButtonUI = (isEnabled: boolean) => {
     if (isEnabled) {
       soundToggleBtn.classList.remove('muted');
       soundToggleBtn.innerHTML = '<span class="sound-icon">🔊</span> オン <kbd class="key-hint">M</kbd>';
+      if (mSoundToggleBtn) mSoundToggleBtn.innerHTML = '🔊 サウンドオン';
     } else {
       soundToggleBtn.classList.add('muted');
       soundToggleBtn.innerHTML = '<span class="sound-icon">🔇</span> オフ <kbd class="key-hint">M</kbd>';
+      if (mSoundToggleBtn) mSoundToggleBtn.innerHTML = '🔇 サウンドオフ';
     }
+  };
+
+  soundToggleBtn.addEventListener('click', () => {
+    const isEnabled = soundEffects.toggle();
+    updateSoundButtonUI(isEnabled);
+  });
+
+  mSoundToggleBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const isEnabled = soundEffects.toggle();
+    updateSoundButtonUI(isEnabled);
+  });
+  mSoundToggleBtn?.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const isEnabled = soundEffects.toggle();
+    updateSoundButtonUI(isEnabled);
+  });
+
+  mHelpBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    toggleHelp();
+  });
+  mHelpBtn?.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    toggleHelp();
   });
 
   // Restart button
@@ -555,6 +721,7 @@ function setupEvents() {
 
   // Start game button click
   startGameBtn.addEventListener('click', () => {
+    localStorage.removeItem('generative-ai-roguelike-save');
     soundEffects.playFanfare();
     engine.startGame();
     updateHUD();
@@ -625,17 +792,32 @@ function setupEvents() {
       engine.useInventoryItem(selectedInventoryIndex);
       closeItemDetail();
       updateHUD();
+      
+      // Close mobile HUD modal if on mobile screen
+      if (window.innerWidth <= 768) {
+        document.getElementById('mobile-hud-container')?.classList.remove('active');
+      }
     } else if (selectedItemDetailType === 'weapon') {
       const ok = engine.unequipItem('weapon');
       if (ok) {
         closeItemDetail();
         updateHUD();
+        
+        // Close mobile HUD modal if on mobile screen
+        if (window.innerWidth <= 768) {
+          document.getElementById('mobile-hud-container')?.classList.remove('active');
+        }
       }
     } else if (selectedItemDetailType === 'armor') {
       const ok = engine.unequipItem('armor');
       if (ok) {
         closeItemDetail();
         updateHUD();
+        
+        // Close mobile HUD modal if on mobile screen
+        if (window.innerWidth <= 768) {
+          document.getElementById('mobile-hud-container')?.classList.remove('active');
+        }
       }
     }
   });
@@ -663,9 +845,26 @@ function setupEvents() {
       openItemDetail(0, 'armor');
     }
   });
+
+  // Save suspension click listener
+  saveBtn.addEventListener('click', () => {
+    saveGame();
+  });
+
+  // Resume game click listener
+  resumeGameBtn.addEventListener('click', () => {
+    const ok = loadGame();
+    if (ok) {
+      startOverlay.classList.add('hidden');
+      soundEffects.playFanfare();
+      renderer.start();
+      updateHUD();
+    }
+  });
 }
 
 function handleRestart() {
+  localStorage.removeItem('generative-ai-roguelike-save');
   renderer.stop();
   engine.reset();
   engine.startGame();
@@ -677,6 +876,15 @@ function updateHUD() {
   const state = engine.state;
   const player = state.player;
 
+  // Show save button only when actively playing or inside shop
+  if (saveBtn) {
+    if (state.status === 'playing' || state.status === 'shop') {
+      saveBtn.classList.remove('hidden');
+    } else {
+      saveBtn.classList.add('hidden');
+    }
+  }
+
   // Level statistics
   statFloor.innerText = `地下 ${state.dungeonLevel} 階`;
   statGold.innerText = `${state.gold} G`;
@@ -687,6 +895,19 @@ function updateHUD() {
   hpValue.innerText = `${player.hp} / ${player.maxHp}`;
   const hpPct = (player.hp / player.maxHp) * 100;
   hpBarFill.style.width = `${Math.max(0, hpPct)}%`;
+
+  // Mobile status bar sync
+  const mHpBarFill = document.getElementById('m-hp-bar-fill');
+  const mHpVal = document.getElementById('m-hp-val');
+  const mFloorVal = document.getElementById('m-floor-val');
+  const mGoldVal = document.getElementById('m-gold-val');
+  const mLevelVal = document.getElementById('m-level-val');
+
+  if (mHpBarFill) mHpBarFill.style.width = `${Math.max(0, hpPct)}%`;
+  if (mHpVal) mHpVal.innerText = `${player.hp} / ${player.maxHp}`;
+  if (mFloorVal) mFloorVal.innerText = `地下 ${state.dungeonLevel} 階`;
+  if (mGoldVal) mGoldVal.innerText = `${state.gold} G`;
+  if (mLevelVal) mLevelVal.innerText = `${player.level}`;
 
   // XP Bar & Text
   if (player.xp !== undefined && player.maxXp !== undefined) {
@@ -820,6 +1041,12 @@ function updateHUD() {
     // Create inner structure
     const infoDiv = document.createElement('div');
     infoDiv.className = 'item-info';
+    infoDiv.style.cursor = 'pointer';
+    infoDiv.addEventListener('click', () => {
+      if (window.innerWidth > 768) {
+        openItemDetail(index);
+      }
+    });
     
     const detailsDiv = document.createElement('div');
     detailsDiv.className = 'item-details';
@@ -873,6 +1100,13 @@ function updateHUD() {
     li.appendChild(infoDiv);
     li.appendChild(actionsDiv);
     
+    // Click on item row opens details on mobile screen
+    li.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        openItemDetail(index);
+      }
+    });
+
     inventoryList.appendChild(li);
   });
 
@@ -1238,6 +1472,7 @@ function startPrologue() {
   }
   isPrologueActive = true;
   startGameBtn.classList.add('hidden');
+  resumeGameBtn.classList.add('hidden');
   skipPrologueBtn.classList.remove('hidden');
   
   let charIndex = 0;
@@ -1287,12 +1522,189 @@ function finishPrologue() {
   startGameBtn.classList.remove('hidden');
   skipPrologueBtn.classList.add('hidden');
   
+  // Show resume button if save data exists
+  const hasSave = localStorage.getItem('generative-ai-roguelike-save') !== null;
+  if (hasSave) {
+    resumeGameBtn.classList.remove('hidden');
+  }
+  
   // Focus the start game button so that pressing Enter acts immediately
   startGameBtn.focus();
 }
 
 function skipPrologue() {
   finishPrologue();
+}
+
+let isMobileLayout = false;
+
+function adjustLayoutForDevice() {
+  const width = window.innerWidth;
+  const tabContentArea = document.getElementById('mobile-tab-content-area');
+  const pcHUD = document.getElementById('pc-hud-el');
+  const pcBottomBar = document.getElementById('pc-bottom-bar');
+  const gameContainer = document.querySelector('.game-container');
+
+  const logsCard = document.getElementById('logs-card-el');
+  const characterCard = document.getElementById('character-card-el');
+  const inventoryCard = document.getElementById('inventory-card-el');
+  const controlsEl = document.getElementById('pc-controls-el');
+
+  if (!logsCard || !characterCard || !inventoryCard || !controlsEl) return;
+
+  if (width <= 768) {
+    if (!isMobileLayout) {
+      // Move cards to Mobile Tab Content Area
+      tabContentArea?.appendChild(logsCard);
+      tabContentArea?.appendChild(characterCard);
+      tabContentArea?.appendChild(inventoryCard);
+
+      // Create a mobile controls container in game-container if not exists
+      let mobileControlsContainer = document.getElementById('mobile-controls-container');
+      if (!mobileControlsContainer) {
+        mobileControlsContainer = document.createElement('section');
+        mobileControlsContainer.id = 'mobile-controls-container';
+        mobileControlsContainer.className = 'game-controls';
+        gameContainer?.appendChild(mobileControlsContainer);
+      }
+      mobileControlsContainer.appendChild(controlsEl);
+
+      isMobileLayout = true;
+      
+      // Default tab on mobile setup
+      switchTab('log');
+    }
+  } else {
+    if (isMobileLayout) {
+      // Restore cards to original PC HUD
+      pcHUD?.appendChild(characterCard);
+      pcHUD?.appendChild(inventoryCard);
+
+      // Restore logs to PC Bottom Bar
+      pcBottomBar?.insertBefore(logsCard, controlsEl);
+
+      // Restore controls to PC Bottom Bar
+      pcBottomBar?.appendChild(controlsEl);
+
+      // Remove mobile controls container if exists
+      const mobileControlsContainer = document.getElementById('mobile-controls-container');
+      if (mobileControlsContainer) {
+        mobileControlsContainer.remove();
+      }
+
+      // Restore PC styles by removing display styles or active class side effects
+      [logsCard, characterCard, inventoryCard].forEach(card => {
+        card.style.display = '';
+      });
+
+      isMobileLayout = false;
+    }
+  }
+}
+
+function switchTab(target: 'log' | 'inventory' | 'status') {
+  [tabLog, tabInventory, tabStatus].forEach(btn => btn?.classList.remove('active'));
+  [contentLog, contentInventory, contentStatus].forEach(content => {
+    content?.classList.remove('active');
+  });
+
+  if (target === 'log') {
+    tabLog?.classList.add('active');
+    contentLog?.classList.add('active');
+  } else if (target === 'inventory') {
+    tabInventory?.classList.add('active');
+    contentInventory?.classList.add('active');
+  } else if (target === 'status') {
+    tabStatus?.classList.add('active');
+    contentStatus?.classList.add('active');
+  }
+}
+
+function saveGame() {
+  if (engine.state.status !== 'playing' && engine.state.status !== 'shop') return;
+
+  engine.addMessage('【記録】冒険の記録（セーブ）を保存し、一時中断しました。');
+
+  const saveData = {
+    version: GAME_VERSION,
+    timestamp: Date.now(),
+    gameState: {
+      status: engine.state.status,
+      dungeonLevel: engine.state.dungeonLevel,
+      tiles: engine.state.tiles,
+      width: engine.state.width,
+      height: engine.state.height,
+      player: engine.state.player,
+      enemies: engine.state.enemies,
+      items: engine.state.items,
+      messages: engine.state.messages,
+      inventory: engine.state.inventory,
+      gold: engine.state.gold,
+      turn: engine.state.turn
+    },
+    equippedWeapon: engine.equippedWeapon,
+    equippedArmor: engine.equippedArmor,
+    currentShopItems: engine.currentShopItems
+  };
+
+  try {
+    localStorage.setItem('generative-ai-roguelike-save', JSON.stringify(saveData));
+    alert('セーブが完了しました。タイトル画面に戻ります。');
+    // Reload to clear variables and return to start overlay cleanly
+    window.location.reload();
+  } catch (error) {
+    console.error('セーブデータの保存に失敗しました:', error);
+    alert('セーブに失敗しました。');
+  }
+}
+
+function loadGame(): boolean {
+  const rawData = localStorage.getItem('generative-ai-roguelike-save');
+  if (!rawData) return false;
+
+  try {
+    let saveData = JSON.parse(rawData);
+    
+    // Version check and migration
+    if (saveData.version !== GAME_VERSION) {
+      console.warn(`古いバージョンのセーブデータ (${saveData.version}) を検出しました。`);
+      saveData = migrateSaveData(saveData, saveData.version, GAME_VERSION);
+    }
+
+    // Apply to engine
+    const state = saveData.gameState;
+    engine.state.status = state.status;
+    engine.state.dungeonLevel = state.dungeonLevel;
+    engine.state.tiles = state.tiles;
+    engine.state.width = state.width;
+    engine.state.height = state.height;
+    engine.state.player = state.player;
+    engine.state.enemies = state.enemies;
+    engine.state.items = state.items;
+    engine.state.messages = state.messages;
+    engine.state.inventory = state.inventory;
+    engine.state.gold = state.gold;
+    engine.state.turn = state.turn;
+
+    engine.equippedWeapon = saveData.equippedWeapon;
+    engine.equippedArmor = saveData.equippedArmor;
+    engine.currentShopItems = saveData.currentShopItems;
+
+    // Delete save data immediately upon load (Roguelike suspend-resume rule)
+    localStorage.removeItem('generative-ai-roguelike-save');
+    return true;
+  } catch (error) {
+    console.error('ロード処理中にエラーが発生しました:', error);
+    alert('セーブデータの読み込みに失敗しました。');
+    return false;
+  }
+}
+
+function migrateSaveData(saveData: any, fromVersion: string, toVersion: string): any {
+  // Migration steps for schema changes
+  console.log(`Migrating save data from version ${fromVersion} to ${toVersion}`);
+  saveData.version = toVersion;
+  return saveData;
 }
 
 
