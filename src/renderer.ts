@@ -11,8 +11,8 @@ export class DungeonRenderer {
   private tileSize: number = 40;
   
   // Camera Viewport Dimensions in tiles (approx. 25 tiles width around player)
-  private readonly viewWidth: number = 25;
-  private readonly viewHeight: number = 15;
+  private viewWidth: number = 25;
+  private viewHeight: number = 15;
 
   private animationFrameId: number | null = null;
   private lastTime: number = 0;
@@ -30,6 +30,23 @@ export class DungeonRenderer {
   }
 
   resizeCanvas() {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      const parent = this.canvas.parentElement;
+      if (parent) {
+        const rect = parent.getBoundingClientRect();
+        // Adjust tile size for mobile readability
+        this.tileSize = 32;
+        // Dynamically compute columns and rows based on container size
+        this.viewWidth = Math.max(9, Math.floor(rect.width / this.tileSize));
+        this.viewHeight = Math.max(9, Math.floor(rect.height / this.tileSize));
+      }
+    } else {
+      this.tileSize = 40;
+      this.viewWidth = 25;
+      this.viewHeight = 15;
+    }
+
     this.canvas.width = this.viewWidth * this.tileSize;
     this.canvas.height = this.viewHeight * this.tileSize;
   }
