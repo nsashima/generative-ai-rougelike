@@ -28,13 +28,21 @@ interface Room {
   h: number;
 }
 
+/**
+ * 指定された階層レベルとサイズに基づいてダンジョンマップ（タイル、プレイヤー開始位置、敵、アイテム）を自動生成する関数
+ * @param level 現在のダンジョン階層（地下1階〜20階）
+ * @param width マップの横幅
+ * @param height マップの縦幅
+ * @returns 生成されたタイルの2次元配列、プレイヤーの開始位置、敵の配列、アイテムの配列
+ */
 export function generateDungeon(level: number, width: number, height: number): {
   tiles: Tile[][];
   playerStart: { x: number; y: number };
   enemies: Entity[];
   items: Item[];
 } {
-  // 1. Initialize grid with walls
+  // 1. グリッドマップをすべて壁タイルで初期化
+
   const tiles: Tile[][] = [];
   for (let x = 0; x < width; x++) {
     tiles[x] = [];
@@ -54,7 +62,7 @@ export function generateDungeon(level: number, width: number, height: number): {
   const maxRoomSize = 15;
   const targetRooms = randomRange(4, 6);
 
-  // 2. Generate rooms
+  // 2. 部屋（Room）を生成して配置する
   for (let i = 0; i < 100; i++) {
     if (rooms.length >= targetRooms) break;
 
@@ -90,7 +98,7 @@ export function generateDungeon(level: number, width: number, height: number): {
     }
   }
 
-  // 3. Connect rooms with corridors
+  // 3. 部屋と部屋を通路（Corridor）で繋ぐ
   for (let i = 1; i < rooms.length; i++) {
     const prevRoom = rooms[i - 1];
     const currRoom = rooms[i];
@@ -113,14 +121,14 @@ export function generateDungeon(level: number, width: number, height: number): {
   // Helper to generate unique ID
   const uuid = () => Math.random().toString(36).substring(2, 9);
 
-  // 4. Place Player Start in the first room center
+  // 4. プレイヤーの開始位置を最初の部屋の中央に決定
   const firstRoom = rooms[0];
   const playerStart = {
     x: Math.floor(firstRoom.x + firstRoom.w / 2),
     y: Math.floor(firstRoom.y + firstRoom.h / 2)
   };
 
-  // 5. Place Stairs Down in the last room center (except on levels 5, 10, 15, and final level 20)
+  // 5. 下り階段の配置（5の倍数階および最終20Fには自動配置しない）
   if (level < 20 && level % 5 !== 0) {
     const lastRoom = rooms[rooms.length - 1];
     const stairsX = Math.floor(lastRoom.x + lastRoom.w / 2);
@@ -128,7 +136,7 @@ export function generateDungeon(level: number, width: number, height: number): {
     tiles[stairsX][stairsY].type = 'stairs';
   }
 
-  // 6. Spawn Enemies and Items
+  // 6. 敵キャラクターおよびアイテムの配置
   const enemies: Entity[] = [];
   const items: Item[] = [];
 
@@ -338,7 +346,7 @@ export function generateDungeon(level: number, width: number, height: number): {
     }
   }
 
-  // 6.5 Spawn Merchant (levels 2 and deeper)
+  // 6.5 商人（NPC）の配置（地下2階以降、中間の部屋の中央に配置）
   if (level >= 2 && rooms.length > 2) {
     const merchantRoom = rooms[Math.floor(rooms.length / 2)];
     const merchantX = Math.floor(merchantRoom.x + merchantRoom.w / 2);
@@ -367,7 +375,7 @@ export function generateDungeon(level: number, width: number, height: number): {
     });
   }
 
-  // 7. LEVEL 5 BOSS: Goblin King
+  // 7. 地下5階ボス：ゴブリンキングの配置とドロップアイテム設定
   if (level === 5) {
     const lastRoom = rooms[rooms.length - 1];
     const bossX = Math.floor(lastRoom.x + lastRoom.w / 2);
@@ -413,7 +421,7 @@ export function generateDungeon(level: number, width: number, height: number): {
     }
   }
 
-  // 8. LEVEL 10 BOSS: Demon King Sashima
+  // 8. 地下10階ボス：邪教の心眼の配置とドロップアイテム設定
   if (level === 10) {
     const lastRoom = rooms[rooms.length - 1];
     const bossX = Math.floor(lastRoom.x + lastRoom.w / 2);
@@ -455,7 +463,7 @@ export function generateDungeon(level: number, width: number, height: number): {
     });
   }
 
-  // 9. LEVEL 15 BOSS: Crystal Golem
+  // 9. 地下15階ボス：結晶の守護者の配置とドロップアイテム設定
   if (level === 15) {
     const lastRoom = rooms[rooms.length - 1];
     const bossX = Math.floor(lastRoom.x + lastRoom.w / 2);
@@ -499,7 +507,7 @@ export function generateDungeon(level: number, width: number, height: number): {
     });
   }
 
-  // 10. LEVEL 20 FINAL BOSS: Abyss Lord
+  // 10. 地下20階最終ボス：深淵の覇王の配置と最終アイテム設定
   if (level === 20) {
     const lastRoom = rooms[rooms.length - 1];
     const bossX = Math.floor(lastRoom.x + lastRoom.w / 2);
@@ -541,7 +549,7 @@ export function generateDungeon(level: number, width: number, height: number): {
     });
   }
 
-  // Guarantee at least one gold pile on each floor
+  // 確実に各階層で最低でも1つのゴールドが拾えるように調整
   const hasGold = items.some(item => item.type === 'gold');
   if (!hasGold && rooms.length > 0) {
     let placed = false;
@@ -601,7 +609,7 @@ export function generateDungeon(level: number, width: number, height: number): {
     }
   }
 
-  // Rare monster spawn (5% Golden Slime, 5% Silver Slime, max 1 per floor)
+  // レアモンスター（ゴールデンスライム/シルバースライム）の低確率出現判定（階ごとに最大1体）
   const rareRoll = Math.random();
   if (rareRoll < 0.10) {
     const isGold = rareRoll < 0.05;
@@ -661,6 +669,14 @@ export function generateDungeon(level: number, width: number, height: number): {
   };
 }
 
+/**
+ * 水平方向（X軸方向）に通路を掘るヘルパー関数
+ * @param tiles マップ上のタイルデータ
+ * @param x1 開始X座標
+ * @param x2 終了X座標
+ * @param y 固定するY座標
+ * @param width2x2 2x2ボス用に通路幅を3マスに拡張するかどうか
+ */
 function carveHorizontal(tiles: Tile[][], x1: number, x2: number, y: number, width2x2: boolean = false) {
   const start = Math.min(x1, x2);
   const end = Math.max(x1, x2);
@@ -674,6 +690,14 @@ function carveHorizontal(tiles: Tile[][], x1: number, x2: number, y: number, wid
   }
 }
 
+/**
+ * 垂直方向（Y軸方向）に通路を掘るヘルパー関数
+ * @param tiles マップ上のタイルデータ
+ * @param y1 開始Y座標
+ * @param y2 終了Y座標
+ * @param x 固定するX座標
+ * @param width2x2 2x2ボス用に通路幅を3マスに拡張するかどうか
+ */
 function carveVertical(tiles: Tile[][], y1: number, y2: number, x: number, width2x2: boolean = false) {
   const start = Math.min(y1, y2);
   const end = Math.max(y1, y2);
@@ -687,8 +711,14 @@ function carveVertical(tiles: Tile[][], y1: number, y2: number, x: number, width
   }
 }
 
-// Simple Shadowcasting or Raycasting Field of View (FOV)
-// To keep it high-performance and lightweight, we can implement recursive shadowcasting or a simple raycasting algorithm
+/**
+ * レイキャスティング（光線放射）アルゴリズムを用いた視界（FOV）の計算関数
+ * プレイヤーを中心とした一定射程の範囲を「視認（visible）」「探索済み（explored）」に設定します。
+ * @param playerX プレイヤーの現在位置のX座標
+ * @param playerY プレイヤーの現在位置のY座標
+ * @param tiles マップ上のタイルデータ
+ * @param range 視界の射程範囲（デフォルト: 6マス）
+ */
 export function computeFOV(playerX: number, playerY: number, tiles: Tile[][], range: number = 6) {
   const width = tiles.length;
   const height = tiles[0].length;

@@ -21,6 +21,10 @@ export class GameEngine {
     this.reset();
   }
 
+  /**
+   * ゲームの状態を初期化（リセット）し、新しいプレイセッションを準備するメソッド
+   * プレイヤーの初期ステータスを設定し、最初のダンジョンレベルをロードします。
+   */
   reset() {
     const player: Entity = {
       id: 'player',
@@ -81,6 +85,11 @@ export class GameEngine {
     soundEffects.playHeal(); // Start sound
   }
 
+  /**
+   * 指定したダンジョン階層をロードするメソッド
+   * マップレイアウトを生成し、プレイヤーの位置を初期化し、敵・アイテムを配置します。
+   * @param level ロードするダンジョン階層（1〜20）
+   */
   loadLevel(level: number) {
     this.state.dungeonLevel = level;
     this.currentShopItems = null; // Clear shop inventory for the new floor
@@ -167,7 +176,11 @@ export class GameEngine {
     });
   }
 
-  // Combat: Player attacks Enemy
+  /**
+   * プレイヤーから指定された敵へ攻撃を実行するメソッド
+   * ダメージ計算、HP減少、経験値獲得、ボスの撃破および勝利判定を処理します。
+   * @param enemy 攻撃対象の敵キャラクター情報
+   */
   attackEnemy(enemy: Entity) {
     // Attack calculation: damage = playerAtt - enemyDef
     const ringAttBoost = (this.equippedRing && this.equippedRing.type === 'ring_attack') ? this.equippedRing.value : 0;
@@ -344,7 +357,10 @@ export class GameEngine {
     return false;
   }
 
-  // Enemy Turn AI
+  /**
+   * マップ上のすべての敵キャラクターのAI行動（移動およびプレイヤーへの攻撃）を実行するメソッド
+   * プレイヤーが行動を完了した後にターン進行の一環として呼び出されます。
+   */
   processEnemyTurns() {
     if (this.isMuseumMode) return;
     const player = this.state.player;
@@ -471,7 +487,11 @@ export class GameEngine {
     }
   }
 
-  // Move or Attack action
+  /**
+   * プレイヤーの移動および移動先でのアクション（攻撃、階段昇降、商人との会話、アイテム拾い）を実行するメソッド
+   * @param dx X軸方向への移動差分（-1, 0, 1）
+   * @param dy Y軸方向への移動差分（-1, 0, 1）
+   */
   movePlayer(dx: number, dy: number) {
     if (this.state.status !== 'playing') return;
 
@@ -539,6 +559,12 @@ export class GameEngine {
     this.processEnemyTurns();
   }
 
+  /**
+   * マップ上に落ちているアイテムを拾い上げるメソッド
+   * ゴールドは即座に所持金に加算され、その他のアイテムはインベントリに空きがあれば追加されます。
+   * @param item 拾い上げる対象のアイテムデータ
+   * @param index items配列内におけるアイテムのインデックス番号
+   */
   pickupItem(item: Item, index: number) {
     // Gold is collected instantly
     if (item.type === 'gold') {
@@ -589,7 +615,11 @@ export class GameEngine {
     }
   }
 
-  // Inventory actions
+  /**
+   * インベントリ（バッグ）の中にあるアイテムを使用または装備するメソッド
+   * 薬の使用、巻物の読解、武器・防具・指輪の装備切り替え、およびその後の敵のターン進行を制御します。
+   * @param index インベントリ配列内の対象アイテムのインデックス番号
+   */
   useInventoryItem(index: number) {
     if (this.state.status !== 'playing') return;
 
@@ -862,7 +892,11 @@ export class GameEngine {
     this.processEnemyTurns();
   }
 
-  // Drop an item to the floor
+  /**
+   * インベントリ内の指定アイテムを、プレイヤーの足元のタイルに置く（捨てる）メソッド
+   * 足元がすでに別のアイテムで塞がれている場合は置くことができません。
+   * @param index インベントリ配列内の対象アイテムのインデックス番号
+   */
   dropInventoryItem(index: number) {
     if (this.state.status !== 'playing') return;
 
@@ -919,6 +953,11 @@ export class GameEngine {
     window.dispatchEvent(new CustomEvent('shop-closed'));
   }
 
+  /**
+   * 現在のフロアの商人（ショップ）が売りに出す品揃えリストを取得・生成するメソッド
+   * 階層レベル（dungeonLevel）に応じた武器、防具、消費アイテム、および指輪（30%確率）のラインナップを決定します。
+   * @returns 商人が販売するアイテムのリスト配列
+   */
   getShopItems() {
     if (this.currentShopItems) {
       return this.currentShopItems;
@@ -1096,6 +1135,12 @@ export class GameEngine {
     return items;
   }
 
+  /**
+   * 商人からアイテムを購入するメソッド
+   * ゴールドの減算、インベントリへの追加、および在庫の減少処理を行います。
+   * @param itemId 購入する対象のアイテムID
+   * @returns 購入が成功したかどうか
+   */
   buyItem(itemId: string): boolean {
     const shopItems = this.getShopItems();
     const item = shopItems.find(i => i.id === itemId);
@@ -1178,6 +1223,12 @@ export class GameEngine {
     }
   }
 
+  /**
+   * 所持アイテム（インベントリ内）を商人に売却するメソッド
+   * 所持金（ゴールド）の加算、インベントリからの削除処理を行います。
+   * @param index 売却するアイテムのインベントリ内のインデックス番号
+   * @returns 売却が成功したかどうか
+   */
   sellItem(index: number): boolean {
     if (this.state.status !== 'shop') return false;
     const item = this.state.inventory[index];
@@ -1207,6 +1258,11 @@ export class GameEngine {
     return true;
   }
 
+  /**
+   * 装備中のアイテム（武器、防具、指輪）を解除し、インベントリに戻すメソッド
+   * @param type 装備解除するスロットのタイプ ('weapon' | 'armor' | 'ring')
+   * @returns 装備解除が成功したかどうか（バッグが満杯の場合は失敗）
+   */
   unequipItem(type: 'weapon' | 'armor' | 'ring'): boolean {
     if (this.state.status !== 'playing') return false;
     let item: Item | null = null;
@@ -1235,6 +1291,10 @@ export class GameEngine {
     return true;
   }
 
+  /**
+   * デバッグ用の「全表示テスト部屋（展示室）」を生成・初期化するメソッド
+   * 全アイテム、全モンスター（色違い、全ボス含む）を安全なAI停止状態で整列配置します。
+   */
   createMuseumRoom() {
     this.isMuseumMode = true;
     this.debugAllVisible = true;

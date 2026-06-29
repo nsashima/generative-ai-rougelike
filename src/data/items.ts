@@ -1,3 +1,7 @@
+/**
+ * 武器（剣など）のレベル別名称定義（レベル1〜20）
+ * - プレイヤーが到達した階層（level）に応じて、この配列から対応するインデックス（level - 1）の武器が選出・生成されます。
+ */
 export const weaponNames = [
   '錆びた剣',          // level 1
   '鉄の剣',            // level 2
@@ -21,29 +25,37 @@ export const weaponNames = [
   '創世神の超聖剣'     // level 20
 ];
 
+/**
+ * 武器のレベル別表示カラー（カラーコード）の定義（レベル1〜20）
+ * - `weaponNames` の各インデックスに対応する配色が適用されます。
+ */
 export const weaponColors = [
-  '#a8a29e', // rust grey
-  '#cbd5e1', // steel
-  '#94a3b8', // blue steel
-  '#60a5fa', // blue runic
-  '#a855f7', // purple legendary
-  '#34d399', // emerald green staff
-  '#f43f5e', // crimson dragon slayer
-  '#fb923c', // fiery orange sword
-  '#facc15', // gold ultimate
-  '#ec4899', // pink divine
-  '#22c55e', // forest green (world tree branch)
-  '#67e8f9', // ice cyan
-  '#38bdf8', // sky blue crystal
-  '#f43f5e', // ruby red
-  '#c084fc', // amethyst purple
-  '#d946ef', // chaos magenta
-  '#6366f1', // abyss indigo
-  '#475569', // slate grey death scythe
-  '#a855f7', // cosmic purple starsword
-  '#f1f5f9'  // divine white
+  '#a8a29e', // 錆びたグレー (錆びた剣)
+  '#cbd5e1', // スチールシルバー (鉄の剣)
+  '#94a3b8', // ブルースチール (鋼鉄の剣)
+  '#60a5fa', // ルーンブルー (ルーンブレード)
+  '#a855f7', // レジェンダリーパープル (エクスカリバー)
+  '#34d399', // エメラルドグリーン (魔導の杖)
+  '#f43f5e', // クリムゾンレッド (竜殺しの大剣)
+  '#fb923c', // ファイアオレンジ (魔剣レーヴァテイン)
+  '#facc15', // ゴールド (光の聖剣アルテマ)
+  '#ec4899', // ピンク (創世神の剣)
+  '#22c55e', // フォレストグリーン (世界樹 of 枝) ➡ 世界樹の枝
+  '#67e8f9', // アイスシアン (氷霊の細剣)
+  '#38bdf8', // スカイブルークリスタル (クリスタルブレード)
+  '#f43f5e', // ルビーレッド (ルビーレイピア)
+  '#c084fc', // アメジストパープル (アメジストスタッフ)
+  '#d946ef', // カオスマゼンタ (カオスダガー)
+  '#6366f1', // アビスインディゴ (アビスの巨大鎌)
+  '#475569', // スレートグレー (冥王のデスサイズ)
+  '#a855f7', // コズミックパープル (銀河の星剣)
+  '#f1f5f9'  // ディヴァインホワイト (創世神の超聖剣)
 ];
 
+/**
+ * 防具（盾など）のレベル別名称定義（レベル1〜20）
+ * - プレイヤーが到達した階層（level）に応じて、この配列から対応するインデックス（level - 1）の防具が選出・生成されます。
+ */
 export const armorNames = [
   '古びた盾',          // level 1
   '鉄の盾',            // level 2
@@ -67,25 +79,29 @@ export const armorNames = [
   'アブソリュートフォース'   // level 20
 ];
 
+/**
+ * 防具のレベル別表示カラー（カラーコード）の定義（レベル1〜20）
+ * - `armorNames` の各インデックスに対応する配色が適用されます。
+ */
 export const armorColors = [
-  '#78716c', // rusty stone
-  '#94a3b8', // steel
-  '#64748b', // heavy metal
-  '#3b82f6', // knight blue
-  '#a855f7', // legendary purple
-  '#ef4444', // crimson red
-  '#312e81', // dark navy shadow
-  '#581c87', // demon purple
-  '#f59e0b', // gold sun shield
-  '#ec4899', // pink god armor
-  '#15803d', // dark forest green
-  '#93c5fd', // soft blue frost
-  '#38bdf8', // crystal cyan
-  '#e11d48', // rose robe
-  '#a855f7', // amethyst purple plate
-  '#a21caf', // purple chaos aura
-  '#4f46e5', // indigo abyss armor
-  '#334155', // slate grey death shield
-  '#7e22ce', // galaxy purple
-  '#cbd5e1'  // absolute steel
+  '#78716c', // 錆びたストーングレー (古びた盾)
+  '#94a3b8', // スチールグレー (鉄の盾)
+  '#64748b', // ヘビーメタル (鋼鉄の盾)
+  '#3b82f6', // ナイトブルー (騎士の盾)
+  '#a855f7', // レジェンダリーパープル (イージスの盾)
+  '#ef4444', // クリムゾンレッド (紅蓮の鎧)
+  '#312e81', // シャドウネイビー (影の防具)
+  '#581c87', // デモンパープル (魔王の盾)
+  '#f59e0b', // ゴールド (光の盾ソール)
+  '#ec4899', // ピンク (神の鎧ゴッドアーマー)
+  '#15803d', // ディープフォレストグリーン (大樹の盾)
+  '#93c5fd', // ライトブルースノー (フロストシールド)
+  '#38bdf8', // Crystal cyan (クリスタルメイル) ➡ クリスタルシアン
+  '#e11d48', // ローズレッド (紅玉のローブ)
+  '#a855f7', // アメジストパープル (アメジストプレート)
+  '#a21caf', // カオスマゼンタ (混沌のオーラ)
+  '#4f46e5', // アビスインディゴ (深淵の魔甲)
+  '#334155', // スレートグレー (冥界の盾)
+  '#7e22ce', // ギャラクシーパープル (ギャラクシーカーディアン)
+  '#cbd5e1'  // アブソリュートシルバー (アブソリュートフォース)
 ];

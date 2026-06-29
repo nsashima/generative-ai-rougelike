@@ -260,6 +260,9 @@ window.addEventListener('DOMContentLoaded', () => {
   startPrologue();
 });
 
+/**
+ * キーボード入力、画面上のUIボタン、モバイル用方向キーなどの各種イベントハンドラーを紐付ける初期設定関数
+ */
 function setupEvents() {
   // Keyboard movement and actions
   window.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -926,6 +929,9 @@ function setupEvents() {
   });
 }
 
+/**
+ * セーブデータを削除し、ゲームの進行度をリセットして最初から再スタートする関数
+ */
 function handleRestart() {
   localStorage.removeItem('generative-ai-roguelike-save');
   renderer.stop();
@@ -935,6 +941,9 @@ function handleRestart() {
   updateHUD();
 }
 
+/**
+ * ゲームステータスに基づいて、画面上のHUD情報（HPバー、レベル、攻撃・防御力、インベントリ、ゴールド、装備スロット）を同期・再描画する関数
+ */
 function updateHUD() {
   const state = engine.state;
   const player = state.player;
@@ -1234,6 +1243,10 @@ function updateHUD() {
   renderLogs();
 }
 
+/**
+ * ゲーム内ログメッセージ（戦闘ダメージ、アイテム使用、レベルアップなど）を画面下のログ欄に描画する関数
+ * メッセージ内のキーワードに応じて色分け表示（ダメージ: 赤/緑、レベルアップ: 黄など）を行います。
+ */
 function renderLogs() {
   const state = engine.state;
   logFeed.innerHTML = '';
@@ -1272,6 +1285,9 @@ function scrollSelectedShopItemIntoView() {
   }, 10);
 }
 
+/**
+ * ショップ画面（購入タブ・売却タブ）および選択中アイテムのステータス詳細枠をDOM描画する関数
+ */
 function renderShop() {
   const state = engine.state;
   shopGoldVal.innerText = `${state.gold} G`;
@@ -1450,6 +1466,12 @@ function renderShop() {
   }
 }
 
+/**
+ * アイテム（バッグ内または装備中）のステータス詳細モーダル画面を開く関数
+ * アイテムの攻撃力・防御力、耐久値、特殊効果、フレーバーテキストを表示し、装備・使用・捨てる・戻るボタンを制御します。
+ * @param index 対象アイテムのインデックス（装備中の場合は-1）
+ * @param type 対象アイテムのスロット種別 ('inventory' | 'weapon' | 'armor' | 'ring')
+ */
 function openItemDetail(index: number, type: 'inventory' | 'weapon' | 'armor' | 'ring' = 'inventory') {
   let item: Item | null = null;
   selectedItemDetailType = type;
@@ -1725,6 +1747,9 @@ function switchTab(target: 'log' | 'inventory' | 'status') {
   }
 }
 
+/**
+ * 現在のゲームデータ（進行状態、プレイヤー、所持アイテム、装備スロット、ショップ陳列など）をローカルストレージにシリアライズ保存し、タイトルに戻る関数
+ */
 function saveGame() {
   if (engine.state.status !== 'playing' && engine.state.status !== 'shop') return;
 
@@ -1769,6 +1794,11 @@ function saveGame() {
   }
 }
 
+/**
+ * ローカルストレージからセーブデータを読み込み、ゲームデータ構造へ書き戻すことで前回の続きからゲームを再開する関数
+ * 保存時のバージョンが現在のゲームバージョンと異なる場合は、自動でデータ移行（マイグレーション）を適用します。
+ * @returns 読み込みに成功したかどうか
+ */
 function loadGame(): boolean {
   const rawData = localStorage.getItem('generative-ai-roguelike-save');
   if (!rawData) return false;

@@ -1,6 +1,9 @@
 import { ItemType } from '../types';
 
-// 12x12 Knight Pixel Art Sprite (1:skin, 2:helmet, 3:tunic, 4:eyes, 5:brown, 6:blade, 7:shield)
+/**
+ * プレイヤー（勇者）の12x12ドット絵スプライトデータ
+ * 各数値はカラーパレット `PLAYER_COLORS` のインデックスを表します（0は透明色）。
+ */
 export const PLAYER_SPRITE = [
   [0,0,2,2,2,2,2,2,0,0,0,0],
   [0,2,2,2,2,2,2,2,2,0,0,0],
@@ -16,6 +19,9 @@ export const PLAYER_SPRITE = [
   [0,5,5,0,0,0,0,5,5,0,0,0]
 ];
 
+/**
+ * プレイヤーのスプライト描画に使用するカラーパレット定義
+ */
 export const PLAYER_COLORS: { [key: number]: string } = {
   1: '#ffedd5', // Skin tone
   2: '#94a3b8', // Steel helmet
@@ -26,7 +32,9 @@ export const PLAYER_COLORS: { [key: number]: string } = {
   7: '#ef4444'  // Red shield
 };
 
-// Item Sprites
+/**
+ * アイテム（指輪、薬、スクロール、武器、防具、ゴールド）の12x12ドット絵スプライトデータ定義
+ */
 export const ITEM_SPRITES: { [key: string]: number[][] } = {
   ring: [
     [0,0,0,0,0,3,3,0,0,0,0,0],
@@ -114,7 +122,11 @@ export const ITEM_SPRITES: { [key: string]: number[][] } = {
   ]
 };
 
-// Enemy Sprites
+/**
+ * モンスターのドット絵スプライトデータ定義
+ * - 通常モブ（12x12 / 12x16サイズ）
+ * - ボスキャラ（24x24の巨大サイズ：dragon, demon_king, crystal_golem, abyss_lord）
+ */
 export const ENEMY_SPRITES: { [key: string]: number[][] } = {
   slime: [
     [0,0,0,0,0,0,0,0,0,0,0,0],
@@ -482,6 +494,9 @@ export const ENEMY_SPRITES: { [key: string]: number[][] } = {
   ]
 };
 
+/**
+ * 特殊な大型ボス（邪教の心眼、深淵の覇王）用の詳細なカラーパレット定義
+ */
 export const ENEMY_COLORS: { [key: string]: { [key: number]: string } } = {
   demon_king: {
     1: '#1e1b4b', // Outer dark purple shadow outline

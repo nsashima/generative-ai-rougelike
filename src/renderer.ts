@@ -71,11 +71,18 @@ export class DungeonRenderer {
     }
   }
 
+  /**
+   * アニメーションの時間進行（脈動する光の表現などに使用）をアップデートするメソッド
+   * @param dt 前回のフレームからの経過時間（秒）
+   */
   private update(dt: number) {
     this.pulseTime += dt;
     this.engine.updateParticles(dt);
   }
 
+  /**
+   * ゲーム画面全体（カメラ基準のタイル、アイテム、敵、プレイヤー、エフェクト、およびショップ等のUI）をキャンバスに描画するメイン処理メソッド
+   */
   private draw() {
     const { tiles, width, height, player, enemies, items, particles, status } = this.engine.state;
 
@@ -141,6 +148,13 @@ export class DungeonRenderer {
     // Overlay states are now rendered in HTML elements rather than the canvas buffer.
   }
 
+  /**
+   * 指定されたタイル（壁、床、階段）を画面上に描画するメソッド
+   * テーマ（階層）に応じた壁・床のデザインおよびプレイヤーの視野（FOV）に応じた明暗を描画します。
+   * @param tile 描画対象のタイル情報
+   * @param cameraX カメラの基準X座標
+   * @param cameraY カメラの基準Y座標
+   */
   private drawTile(tile: Tile, cameraX: number, cameraY: number) {
     const screenX = (tile.x - cameraX) * this.tileSize;
     const screenY = (tile.y - cameraY) * this.tileSize;
@@ -347,6 +361,12 @@ export class DungeonRenderer {
     }
   }
 
+  /**
+   * マップ上に落ちているアイテム（スプライト定義ベース）を描画するメソッド
+   * @param item 描画対象のアイテム情報
+   * @param cameraX カメラの基準X座標
+   * @param cameraY カメラの基準Y座標
+   */
   private drawItem(item: Item, cameraX: number, cameraY: number) {
     const screenX = (item.x - cameraX) * this.tileSize;
     const screenY = (item.y - cameraY) * this.tileSize;
@@ -430,6 +450,13 @@ export class DungeonRenderer {
     }
   }
 
+  /**
+   * モンスターを描画するメソッド
+   * スプライトデータの走査、バリエーションによるカラー切り替え、ボスの背後発光、および2x2巨大サイズに対応します。
+   * @param enemy 描画対象のモンスター情報
+   * @param cameraX カメラの基準X座標
+   * @param cameraY カメラの基準Y座標
+   */
   private drawEnemy(enemy: Entity, cameraX: number, cameraY: number) {
     const screenX = (enemy.x - cameraX) * this.tileSize;
     const screenY = (enemy.y - cameraY) * this.tileSize;
@@ -704,6 +731,12 @@ export class DungeonRenderer {
     this.ctx.shadowBlur = 0;
   }
 
+  /**
+   * プレイヤーキャラクターを描画するメソッド
+   * @param player プレイヤーの情報
+   * @param cameraX カメラの基準X座標
+   * @param cameraY カメラの基準Y座標
+   */
   private drawPlayer(player: Entity, cameraX: number, cameraY: number) {
     const screenX = (player.x - cameraX) * this.tileSize;
     const screenY = (player.y - cameraY) * this.tileSize;
@@ -754,6 +787,12 @@ export class DungeonRenderer {
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
+  /**
+   * 画面上のエフェクト（ダメージ値テキストや飛び散るパーティクル）を描画するメソッド
+   * @param particles パーティクルの配列
+   * @param cameraX カメラの基準X座標
+   * @param cameraY カメラの基準Y座標
+   */
   private drawParticles(particles: Particle[], cameraX: number, cameraY: number) {
     this.ctx.save();
     for (const p of particles) {
