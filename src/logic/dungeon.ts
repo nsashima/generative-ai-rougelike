@@ -175,23 +175,23 @@ export function generateDungeon(level: number, width: number, height: number): {
         let description = `${value}ゴールドが入っている。`;
         let itemDurability: number | undefined = undefined;
 
-        if (itemTypeChance < 0.25) {
+        if (itemTypeChance < 0.24) {
           // Gold (default values already set)
-        } else if (itemTypeChance < 0.50) {
+        } else if (itemTypeChance < 0.48) {
           type = 'potion_heal';
           name = '回復薬';
           symbol = '!';
           color = '#ef4444';
           value = 40; // 40% healing
           description = 'HPを最大値の40%回復する。';
-        } else if (itemTypeChance < 0.60) {
+        } else if (itemTypeChance < 0.56) {
           type = 'potion_strength';
           name = '力増強の薬';
           symbol = '!';
           color = '#3b82f6';
           value = 1; // permanent attack boost (+1)
           description = '攻撃力を永久に 1 上昇させる。';
-        } else if (itemTypeChance < 0.75) {
+        } else if (itemTypeChance < 0.70) {
           type = 'weapon_sword';
           const idx = Math.max(0, Math.min(level - 1, 9));
           name = weaponNames[idx];
@@ -200,7 +200,7 @@ export function generateDungeon(level: number, width: number, height: number): {
           value = Math.floor(2 + level * 1.3); // reduced weapon power (was 2 + level * 2.0)
           itemDurability = randomRange(12, 20) + level * 2;
           description = `攻撃力が ${value} 上がる武器。`;
-        } else if (itemTypeChance < 0.88) {
+        } else if (itemTypeChance < 0.82) {
           type = 'armor_shield';
           const idx = Math.max(0, Math.min(level - 1, 9));
           name = armorNames[idx];
@@ -209,6 +209,41 @@ export function generateDungeon(level: number, width: number, height: number): {
           value = Math.floor(1 + level * 0.9); // reduced armor power (was 1 + level * 1.5)
           itemDurability = randomRange(12, 20) + level * 2;
           description = `防御力が ${value} 上がる防具。`;
+        } else if (itemTypeChance < 0.90) {
+          // Ring (8%)
+          const ringChance = Math.random();
+          symbol = 'o';
+          if (ringChance < 0.35) {
+            type = 'ring_attack';
+            value = 1 + Math.floor(level * 0.5);
+            name = `力の指輪 (+${value})`;
+            color = '#fb7185';
+            description = `攻撃力が ${value} 上がる指輪。`;
+          } else if (ringChance < 0.70) {
+            type = 'ring_defense';
+            value = 1 + Math.floor(level * 0.4);
+            name = `守りの指輪 (+${value})`;
+            color = '#38bdf8';
+            description = `防御力が ${value} 上がる指輪。`;
+          } else if (ringChance < 0.85) {
+            type = 'ring_durability';
+            value = 50; // 50% reduce probability
+            name = '節約の指輪';
+            color = '#34d399';
+            description = '50%の確率で武器・防具の耐久消費を防ぐ指輪。';
+          } else if (ringChance < 0.925) {
+            type = 'ring_reflect';
+            value = 30; // 30% reflect
+            name = '反撃の指輪';
+            color = '#fb923c';
+            description = '受けたダメージの30%を敵に跳ね返す指輪。';
+          } else {
+            type = 'ring_heal';
+            value = 3; // every 3 turns
+            name = '癒やしの指輪';
+            color = '#a855f7';
+            description = '3ターンごとにHPが1回復する指輪。';
+          }
         } else {
           // scrolls
           const scrollChance = Math.random();

@@ -355,6 +355,15 @@ export class DungeonRenderer {
     } else if (item.type === 'armor_shield') {
       sprite = ITEM_SPRITES.armor_shield;
       colors = getItemColors('armor_shield', item.color);
+    } else if (
+      item.type === 'ring_attack' ||
+      item.type === 'ring_defense' ||
+      item.type === 'ring_durability' ||
+      item.type === 'ring_reflect' ||
+      item.type === 'ring_heal'
+    ) {
+      sprite = ITEM_SPRITES.ring;
+      colors = getItemColors(item.type, item.color);
     }
 
     if (sprite) {

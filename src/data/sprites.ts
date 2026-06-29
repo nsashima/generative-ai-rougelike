@@ -28,6 +28,20 @@ export const PLAYER_COLORS: { [key: number]: string } = {
 
 // Item Sprites
 export const ITEM_SPRITES: { [key: string]: number[][] } = {
+  ring: [
+    [0,0,0,0,0,3,3,0,0,0,0,0],
+    [0,0,0,0,3,4,4,3,0,0,0,0],
+    [0,0,0,3,4,4,4,4,3,0,0,0],
+    [0,0,0,1,1,3,3,1,1,0,0,0],
+    [0,0,1,2,2,0,0,2,2,1,0,0],
+    [0,1,2,2,0,0,0,0,2,2,1,0],
+    [0,1,2,0,0,0,0,0,0,2,1,0],
+    [0,1,2,2,0,0,0,0,2,2,1,0],
+    [0,0,1,2,2,0,0,2,2,1,0,0],
+    [0,0,0,1,1,2,2,1,1,0,0,0],
+    [0,0,0,0,1,1,1,1,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0]
+  ],
   gold: [
     [0,0,0,0,0,0,0,0,0,0,0,0],
     [0,0,0,0,1,1,1,1,0,0,0,0],
@@ -343,6 +357,19 @@ export function getItemColors(type: ItemType, itemColor: string): { [key: number
       1: '#94a3b8', // Steel rim
       2: '#0ea5e9', // Blue field
       3: '#fbbf24'  // Golden crown/emblem
+    };
+  } else if (
+    type === 'ring_attack' ||
+    type === 'ring_defense' ||
+    type === 'ring_durability' ||
+    type === 'ring_reflect' ||
+    type === 'ring_heal'
+  ) {
+    return {
+      1: '#78350f', // Dark metal outline
+      2: '#fbbf24', // Shining gold base
+      3: itemColor || '#facc15', // Gem color
+      4: '#ffffff'  // Gem shine (white)
     };
   }
   return {};
