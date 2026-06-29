@@ -44,6 +44,7 @@ let statDef: HTMLElement;
 // Equipment elements
 let equipWeapon: HTMLElement;
 let equipArmor: HTMLElement;
+let equipRing: HTMLElement;
 
 // Inventory elements
 let inventoryCount: HTMLElement;
@@ -105,7 +106,7 @@ let itemDetailPrice: HTMLElement;
 let itemDetailDesc: HTMLElement;
 let selectedInventoryIndex: number = -1;
 let selectedSortIndex: number = -1;
-let selectedItemDetailType: 'inventory' | 'weapon' | 'armor' = 'inventory';
+let selectedItemDetailType: 'inventory' | 'weapon' | 'armor' | 'ring' = 'inventory';
 
 // Help elements
 let helpBtn: HTMLButtonElement;
@@ -141,6 +142,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   equipWeapon = document.getElementById('equip-weapon')!;
   equipArmor = document.getElementById('equip-armor')!;
+  equipRing = document.getElementById('equip-ring')!;
 
   inventoryCount = document.getElementById('inventory-count')!;
   inventoryList = document.getElementById('inventory-list')!;
@@ -498,7 +500,7 @@ function setupEvents() {
         break;
     }
 
-    // Inspect equipped items using Alt+W (weapon) and Alt+A (armor)
+    // Inspect equipped items using Alt+W (weapon), Alt+A (armor), and Alt+R (ring)
     if (e.altKey) {
       if (e.code === 'KeyW') {
         e.preventDefault();
@@ -511,6 +513,13 @@ function setupEvents() {
         e.preventDefault();
         if (engine.equippedArmor) {
           openItemDetail(0, 'armor');
+        }
+        return;
+      }
+      if (e.code === 'KeyR') {
+        e.preventDefault();
+        if (engine.equippedRing) {
+          openItemDetail(0, 'ring');
         }
         return;
       }
@@ -844,6 +853,17 @@ function setupEvents() {
           document.getElementById('mobile-hud-container')?.classList.remove('active');
         }
       }
+    } else if (selectedItemDetailType === 'ring') {
+      const ok = engine.unequipItem('ring');
+      if (ok) {
+        closeItemDetail();
+        updateHUD();
+        
+        // Close mobile HUD modal if on mobile screen
+        if (window.innerWidth <= 768) {
+          document.getElementById('mobile-hud-container')?.classList.remove('active');
+        }
+      }
     }
   });
 
@@ -868,6 +888,11 @@ function setupEvents() {
   equipArmor.addEventListener('click', () => {
     if (engine.equippedArmor) {
       openItemDetail(0, 'armor');
+    }
+  });
+  equipRing.addEventListener('click', () => {
+    if (engine.equippedRing) {
+      openItemDetail(0, 'ring');
     }
   });
 
@@ -945,14 +970,18 @@ function updateHUD() {
   const isGuardian = player.job === 'guardian';
   const weaponBoost = engine.equippedWeapon?.value || 0;
   const armorBoost = engine.equippedArmor?.value || 0;
+  const ringAttBoost = (engine.equippedRing && engine.equippedRing.type === 'ring_attack') ? engine.equippedRing.value : 0;
+  const ringDefBoost = (engine.equippedRing && engine.equippedRing.type === 'ring_defense') ? engine.equippedRing.value : 0;
   
   if (isGuardian) {
-    statAtt.innerText = `${player.att}`;
-    const totalDefBoost = armorBoost + weaponBoost;
+    statAtt.innerText = `${player.att}${ringAttBoost > 0 ? ` (+${ringAttBoost})` : ''}`;
+    const totalDefBoost = armorBoost + weaponBoost + ringDefBoost;
     statDef.innerText = `${player.def}${totalDefBoost > 0 ? ` (+${totalDefBoost})` : ''}`;
   } else {
-    statAtt.innerText = `${player.att}${weaponBoost > 0 ? ` (+${weaponBoost})` : ''}`;
-    statDef.innerText = `${player.def}${armorBoost > 0 ? ` (+${armorBoost})` : ''}`;
+    const totalAttBoost = weaponBoost + ringAttBoost;
+    const totalDefBoost = armorBoost + ringDefBoost;
+    statAtt.innerText = `${player.att}${totalAttBoost > 0 ? ` (+${totalAttBoost})` : ''}`;
+    statDef.innerText = `${player.def}${totalDefBoost > 0 ? ` (+${totalDefBoost})` : ''}`;
   }
 
   // Dynamically change equipment labels based on job (without bracket symbols)
@@ -997,6 +1026,20 @@ function updateHUD() {
     equipArmor.style.color = '';
     equipArmor.style.cursor = '';
     equipArmor.style.textDecoration = '';
+  }
+
+  if (engine.equippedRing) {
+    equipRing.innerText = `${engine.equippedRing.name}`;
+    equipRing.classList.remove('empty');
+    equipRing.style.color = engine.equippedRing.color;
+    equipRing.style.cursor = 'pointer';
+    equipRing.style.textDecoration = 'underline';
+  } else {
+    equipRing.innerText = '未装備';
+    equipRing.classList.add('empty');
+    equipRing.style.color = '';
+    equipRing.style.cursor = '';
+    equipRing.style.textDecoration = '';
   }
 
   // Inventory UI
@@ -1095,7 +1138,8 @@ function updateHUD() {
     const keyNum = index === 9 ? '0' : (index + 1).toString();
     
     // Check if equipment or consumable
-    const isEquip = item.type === 'weapon_sword' || item.type === 'armor_shield';
+    const isRing = item.type.startsWith('ring_');
+    const isEquip = item.type === 'weapon_sword' || item.type === 'armor_shield' || isRing;
     useBtn.innerHTML = `${isEquip ? '装備' : '使う'} <kbd class="key-hint">${keyNum}</kbd>`;
     useBtn.addEventListener('click', () => {
       engine.useInventoryItem(index);
@@ -1392,7 +1436,7 @@ function renderShop() {
   }
 }
 
-function openItemDetail(index: number, type: 'inventory' | 'weapon' | 'armor' = 'inventory') {
+function openItemDetail(index: number, type: 'inventory' | 'weapon' | 'armor' | 'ring' = 'inventory') {
   let item: Item | null = null;
   selectedItemDetailType = type;
 
@@ -1404,6 +1448,9 @@ function openItemDetail(index: number, type: 'inventory' | 'weapon' | 'armor' = 
     selectedInventoryIndex = -1;
   } else if (type === 'armor') {
     item = engine.equippedArmor;
+    selectedInventoryIndex = -1;
+  } else if (type === 'ring') {
+    item = engine.equippedRing;
     selectedInventoryIndex = -1;
   }
 
@@ -1417,6 +1464,13 @@ function openItemDetail(index: number, type: 'inventory' | 'weapon' | 'armor' = 
   let typeStr = 'その他';
   if (item.type === 'weapon_sword') typeStr = '武器';
   else if (item.type === 'armor_shield') typeStr = '防具';
+  else if (
+    item.type === 'ring_attack' ||
+    item.type === 'ring_defense' ||
+    item.type === 'ring_durability' ||
+    item.type === 'ring_reflect' ||
+    item.type === 'ring_heal'
+  ) typeStr = '指輪';
   else if (item.type.startsWith('potion')) typeStr = '薬';
   else if (item.type.startsWith('scroll')) typeStr = '巻物';
   
@@ -1427,6 +1481,14 @@ function openItemDetail(index: number, type: 'inventory' | 'weapon' | 'armor' = 
   if (item.type === 'weapon_sword' || item.type === 'armor_shield') {
     const durStr = item.durability !== undefined ? ` (耐久:${item.durability}/${item.maxDurability})` : '';
     valStr = `+${item.value}${durStr}`;
+  } else if (item.type === 'ring_attack' || item.type === 'ring_defense') {
+    valStr = `効果量 +${item.value}`;
+  } else if (item.type === 'ring_durability') {
+    valStr = `耐久節約確率 ${item.value}%`;
+  } else if (item.type === 'ring_reflect') {
+    valStr = `反射割合 ${item.value}%`;
+  } else if (item.type === 'ring_heal') {
+    valStr = `${item.value}ターン毎にHP1回復`;
   } else if (item.type === 'potion_heal') {
     valStr = `最大HPの ${item.value}% 回復`;
   } else if (item.type === 'potion_strength') {
@@ -1445,8 +1507,9 @@ function openItemDetail(index: number, type: 'inventory' | 'weapon' | 'armor' = 
   itemDetailDesc.innerText = item.description;
   
   // Set use button text
-  const isEquip = item.type === 'weapon_sword' || item.type === 'armor_shield';
-  if (type === 'weapon' || type === 'armor') {
+  const isRing = item.type.startsWith('ring_');
+  const isEquip = item.type === 'weapon_sword' || item.type === 'armor_shield' || isRing;
+  if (type === 'weapon' || type === 'armor' || type === 'ring') {
     itemDetailUseBtn.innerHTML = `装備を外す <kbd class="key-hint">Enter/E</kbd>`;
     itemDetailDropBtn.disabled = true;
     itemDetailDropBtn.style.opacity = '0.5';
@@ -1670,6 +1733,7 @@ function saveGame() {
     },
     equippedWeapon: engine.equippedWeapon,
     equippedArmor: engine.equippedArmor,
+    equippedRing: engine.equippedRing,
     currentShopItems: engine.currentShopItems
   };
 
@@ -1719,6 +1783,7 @@ function loadGame(): boolean {
 
     engine.equippedWeapon = saveData.equippedWeapon;
     engine.equippedArmor = saveData.equippedArmor;
+    engine.equippedRing = saveData.equippedRing || null;
     engine.currentShopItems = saveData.currentShopItems;
 
     // Delete save data immediately upon load (Roguelike suspend-resume rule)

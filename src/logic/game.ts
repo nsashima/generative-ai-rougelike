@@ -12,9 +12,10 @@ export class GameEngine {
   // Track equipped items
   public equippedWeapon: Item | null = null;
   public equippedArmor: Item | null = null;
+  public equippedRing: Item | null = null;
   public debugAllVisible: boolean = false;
   public currentShopItems: any[] | null = null;
-
+  
   constructor() {
     this.reset();
   }
@@ -40,6 +41,7 @@ export class GameEngine {
 
     this.equippedWeapon = null;
     this.equippedArmor = null;
+    this.equippedRing = null;
     this.debugAllVisible = false;
     this.currentShopItems = null;
 
@@ -166,7 +168,8 @@ export class GameEngine {
   // Combat: Player attacks Enemy
   attackEnemy(enemy: Entity) {
     // Attack calculation: damage = playerAtt - enemyDef
-    const playerAtt = this.state.player.att + (this.equippedWeapon?.value || 0);
+    const ringAttBoost = (this.equippedRing && this.equippedRing.type === 'ring_attack') ? this.equippedRing.value : 0;
+    const playerAtt = this.state.player.att + (this.equippedWeapon?.value || 0) + ringAttBoost;
     const damage = Math.max(1, playerAtt - enemy.def);
     enemy.hp -= damage;
 
@@ -177,12 +180,20 @@ export class GameEngine {
     // Decrease weapon durability
     if (this.equippedWeapon) {
       if (this.equippedWeapon.durability !== undefined) {
-        this.equippedWeapon.durability--;
-        if (this.equippedWeapon.durability <= 0) {
-          this.addMessage(`【破損】${this.equippedWeapon.name} が壊れて消滅してしまった！`);
-          this.spawnParticle(this.state.player.x, this.state.player.y, '#f43f5e', 25, `${this.equippedWeapon.name} 破損！`);
-          this.equippedWeapon = null;
-          soundEffects.playDeath(); // play crash/shatter sound
+        let reduceDurabilityLoss = false;
+        if (this.equippedRing && this.equippedRing.type === 'ring_durability') {
+          reduceDurabilityLoss = Math.random() < 0.5;
+        }
+        if (!reduceDurabilityLoss) {
+          this.equippedWeapon.durability--;
+          if (this.equippedWeapon.durability <= 0) {
+            this.addMessage(`【破損】${this.equippedWeapon.name} が壊れて消滅してしまった！`);
+            this.spawnParticle(this.state.player.x, this.state.player.y, '#f43f5e', 25, `${this.equippedWeapon.name} 破損！`);
+            this.equippedWeapon = null;
+            soundEffects.playDeath(); // play crash/shatter sound
+          }
+        } else {
+          this.addMessage(`【指輪の効果】${this.equippedWeapon.name} の耐久消費が防がれた！`);
         }
       }
     }
@@ -321,6 +332,16 @@ export class GameEngine {
   processEnemyTurns() {
     const player = this.state.player;
 
+    // Process ring_heal effect (restore 1 HP every X turns)
+    if (this.equippedRing && this.equippedRing.type === 'ring_heal') {
+      const healInterval = this.equippedRing.value || 3;
+      if (this.state.turn % healInterval === 0 && player.hp < player.maxHp) {
+        player.hp = Math.min(player.maxHp, player.hp + 1);
+        this.addMessage(`【指輪の効果】癒やしの光に包まれ、HPが 1 回復した。`);
+        this.spawnParticle(player.x, player.y, '#22c55e', 4, '+1 HP');
+      }
+    }
+
     for (const enemy of this.state.enemies) {
       if (enemy.type === 'merchant') continue; // Merchants don't chase or attack!
       
@@ -382,7 +403,8 @@ export class GameEngine {
   // Combat: Enemy attacks Player
   attackPlayer(enemy: Entity) {
     const player = this.state.player;
-    const playerDef = player.def + (this.equippedArmor?.value || 0);
+    const ringDefBoost = (this.equippedRing && this.equippedRing.type === 'ring_defense') ? this.equippedRing.value : 0;
+    const playerDef = player.def + (this.equippedArmor?.value || 0) + ringDefBoost;
     const damage = Math.max(1, enemy.att - playerDef);
     player.hp -= damage;
 
@@ -390,15 +412,35 @@ export class GameEngine {
     this.spawnParticle(player.x, player.y, '#e11d48', 8, `-${damage}`);
     soundEffects.playHit();
 
+    // Reflect damage (ring_reflect)
+    if (this.equippedRing && this.equippedRing.type === 'ring_reflect') {
+      const reflectPercent = this.equippedRing.value || 30;
+      const reflectDamage = Math.max(1, Math.floor(damage * (reflectPercent / 100)));
+      enemy.hp -= reflectDamage;
+      this.addMessage(`【指輪の効果】${enemy.name}に ${reflectDamage} ダメージを反射した！`);
+      this.spawnParticle(enemy.x, enemy.y, '#fb923c', 12, `反射-${reflectDamage}`);
+      if (enemy.hp <= 0) {
+        this.defeatEnemy(enemy);
+      }
+    }
+
     // Decrease armor durability
     if (this.equippedArmor) {
       if (this.equippedArmor.durability !== undefined) {
-        this.equippedArmor.durability--;
-        if (this.equippedArmor.durability <= 0) {
-          this.addMessage(`【破損】${this.equippedArmor.name} が壊れて消滅してしまった！`);
-          this.spawnParticle(player.x, player.y, '#f43f5e', 25, `${this.equippedArmor.name} 破損！`);
-          this.equippedArmor = null;
-          soundEffects.playDeath(); // play crash/shatter sound
+        let reduceDurabilityLoss = false;
+        if (this.equippedRing && this.equippedRing.type === 'ring_durability') {
+          reduceDurabilityLoss = Math.random() < 0.5;
+        }
+        if (!reduceDurabilityLoss) {
+          this.equippedArmor.durability--;
+          if (this.equippedArmor.durability <= 0) {
+            this.addMessage(`【破損】${this.equippedArmor.name} が壊れて消滅してしまった！`);
+            this.spawnParticle(player.x, player.y, '#f43f5e', 25, `${this.equippedArmor.name} 破損！`);
+            this.equippedArmor = null;
+            soundEffects.playDeath(); // play crash/shatter sound
+          }
+        } else {
+          this.addMessage(`【指輪の効果】${this.equippedArmor.name} の耐久消費が防がれた！`);
         }
       }
     }
@@ -593,6 +635,25 @@ export class GameEngine {
         this.equippedArmor = item;
         soundEffects.playGold();
         this.spawnParticle(player.x, player.y, '#60a5fa', 8, 'Equip Shield');
+        break;
+
+      case 'ring_attack':
+      case 'ring_defense':
+      case 'ring_durability':
+      case 'ring_reflect':
+      case 'ring_heal':
+        // Equip ring
+        if (this.equippedRing) {
+          const oldRing = this.equippedRing;
+          this.state.inventory[index] = oldRing;
+          this.addMessage(`${oldRing.name} を装備から外し、${item.name} を装備した。`);
+        } else {
+          this.state.inventory.splice(index, 1);
+          this.addMessage(`${item.name} を装備した。`);
+        }
+        this.equippedRing = item;
+        soundEffects.playGold();
+        this.spawnParticle(player.x, player.y, '#facc15', 8, 'Equip Ring');
         break;
 
       case 'scroll_teleport': {
@@ -955,6 +1016,65 @@ export class GameEngine {
       }
     ];
 
+    // 30% chance to sell a ring
+    if (Math.random() < 0.30) {
+      const ringChance = Math.random();
+      let rType = 'ring_attack';
+      let rName = '力の指輪';
+      let rVal = 1 + Math.floor(level * 0.5);
+      let rPrice = level * 150;
+      let rColor = '#fb7185';
+      let rDesc = `攻撃力が ${rVal} 上がる指輪。`;
+
+      if (ringChance < 0.35) {
+        // Attack (default values)
+      } else if (ringChance < 0.70) {
+        rType = 'ring_defense';
+        rVal = 1 + Math.floor(level * 0.4);
+        rName = `守りの指輪 (+${rVal})`;
+        rPrice = level * 150;
+        rColor = '#38bdf8';
+        rDesc = `防御力が ${rVal} 上がる指輪。`;
+      } else if (ringChance < 0.85) {
+        rType = 'ring_durability';
+        rVal = 50;
+        rName = '節約の指輪';
+        rPrice = level * 250;
+        rColor = '#34d399';
+        rDesc = '50%の確率で武器・防具の耐久消費を防ぐ指輪。';
+      } else if (ringChance < 0.925) {
+        rType = 'ring_reflect';
+        rVal = 30;
+        rName = '反撃の指輪';
+        rPrice = level * 300;
+        rColor = '#fb923c';
+        rDesc = '受けたダメージの30%を敵に跳ね返す指輪。';
+      } else {
+        rType = 'ring_heal';
+        rVal = 3;
+        rName = '癒やしの指輪';
+        rPrice = level * 300;
+        rColor = '#a855f7';
+        rDesc = '3ターンごとにHPが1回復する指輪。';
+      }
+
+      if (rType === 'ring_attack') {
+        rName = `力の指輪 (+${rVal})`;
+      }
+
+      items.push({
+        id: 'shop_ring',
+        name: rName,
+        price: rPrice,
+        description: rDesc,
+        type: rType,
+        symbol: 'o',
+        color: rColor,
+        value: rVal,
+        stock: 1
+      } as any);
+    }
+
     this.currentShopItems = items;
     return items;
   }
@@ -1027,6 +1147,15 @@ export class GameEngine {
         return item.value * 8;
       case 'armor_shield':
         return item.value * 8;
+      case 'ring_attack':
+      case 'ring_defense':
+        return item.value * 20;
+      case 'ring_durability':
+        return 80;
+      case 'ring_reflect':
+        return 100;
+      case 'ring_heal':
+        return 100;
       default:
         return 5;
     }
@@ -1044,6 +1173,9 @@ export class GameEngine {
     } else if (this.equippedArmor?.id === item.id) {
       this.equippedArmor = null;
       this.addMessage(`${item.name} を装備から外して売却した。`);
+    } else if (this.equippedRing?.id === item.id) {
+      this.equippedRing = null;
+      this.addMessage(`${item.name} を装備から外して売却した。`);
     }
 
     const price = this.getSellPrice(item);
@@ -1058,9 +1190,13 @@ export class GameEngine {
     return true;
   }
 
-  unequipItem(type: 'weapon' | 'armor'): boolean {
+  unequipItem(type: 'weapon' | 'armor' | 'ring'): boolean {
     if (this.state.status !== 'playing') return false;
-    const item = type === 'weapon' ? this.equippedWeapon : this.equippedArmor;
+    let item: Item | null = null;
+    if (type === 'weapon') item = this.equippedWeapon;
+    else if (type === 'armor') item = this.equippedArmor;
+    else if (type === 'ring') item = this.equippedRing;
+    
     if (!item) return false;
 
     if (this.state.inventory.length >= 10) {
@@ -1070,8 +1206,10 @@ export class GameEngine {
 
     if (type === 'weapon') {
       this.equippedWeapon = null;
-    } else {
+    } else if (type === 'armor') {
       this.equippedArmor = null;
+    } else if (type === 'ring') {
+      this.equippedRing = null;
     }
 
     this.state.inventory.push(item);
