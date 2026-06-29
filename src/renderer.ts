@@ -145,10 +145,19 @@ export class DungeonRenderer {
     const screenX = (tile.x - cameraX) * this.tileSize;
     const screenY = (tile.y - cameraY) * this.tileSize;
     const isVisible = tile.visible;
-    const isHellTheme = this.engine.state.dungeonLevel >= 6;
+    
+    const level = this.engine.state.dungeonLevel;
+    let theme: 'default' | 'hell' | 'ice' | 'void' = 'default';
+    if (level >= 6 && level <= 10) {
+      theme = 'hell';
+    } else if (level >= 11 && level <= 15) {
+      theme = 'ice';
+    } else if (level >= 16) {
+      theme = 'void';
+    }
 
     if (tile.type === 'wall') {
-      if (isHellTheme) {
+      if (theme === 'hell') {
         // Lava-cracked Wall styling
         this.ctx.fillStyle = isVisible ? '#1c1917' : '#0c0a09'; // stone-900 / stone-950
         this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
@@ -163,8 +172,36 @@ export class DungeonRenderer {
         this.ctx.fillRect(screenX + 18, screenY + 8, 2, 8);
         this.ctx.fillRect(screenX + 10, screenY + 18, 22, 2);
         this.ctx.fillRect(screenX + 8, screenY + 20, 2, 6);
+      } else if (theme === 'ice') {
+        // Ice Crystal Wall styling
+        this.ctx.fillStyle = isVisible ? '#083344' : '#022d42'; // deep dark cyan
+        this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
+
+        this.ctx.strokeStyle = isVisible ? '#06b6d4' : '#083344'; // cyan outline
+        this.ctx.lineWidth = 0.5;
+        this.ctx.strokeRect(screenX, screenY, this.tileSize, this.tileSize);
+
+        // Draw ice crystal shining shards
+        this.ctx.fillStyle = isVisible ? '#22d3ee' : '#0e7490';
+        this.ctx.fillRect(screenX + 6, screenY + 6, 8, 8);
+        this.ctx.fillRect(screenX + 20, screenY + 16, 6, 6);
+        this.ctx.fillRect(screenX + 10, screenY + 22, 4, 4);
+      } else if (theme === 'void') {
+        // Obsidian Void Wall styling
+        this.ctx.fillStyle = isVisible ? '#120b24' : '#05020c'; // very dark purple/black
+        this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
+
+        this.ctx.strokeStyle = isVisible ? '#6b21a8' : '#3b0764'; // purple outline
+        this.ctx.lineWidth = 0.5;
+        this.ctx.strokeRect(screenX, screenY, this.tileSize, this.tileSize);
+
+        // Draw purple cosmic energy stars
+        this.ctx.fillStyle = isVisible ? '#d8b4fe' : '#581c87';
+        this.ctx.fillRect(screenX + 8, screenY + 8, 3, 3);
+        this.ctx.fillRect(screenX + 22, screenY + 12, 2, 2);
+        this.ctx.fillRect(screenX + 12, screenY + 24, 3, 3);
       } else {
-        // Wall styling
+        // Wall styling (Default)
         this.ctx.fillStyle = isVisible ? '#1e293b' : '#0f172a'; // slate-800 visible, slate-900 shadow
         this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
 
@@ -181,7 +218,7 @@ export class DungeonRenderer {
         this.ctx.fillRect(screenX + 5, screenY + 28, 14, 5);
       }
     } else if (tile.type === 'floor') {
-      if (isHellTheme) {
+      if (theme === 'hell') {
         // Ash floor styling
         this.ctx.fillStyle = isVisible ? '#180808' : '#0a0303'; // deep dark red-black
         this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
@@ -194,8 +231,34 @@ export class DungeonRenderer {
         this.ctx.fillStyle = isVisible ? '#f97316' : '#9a3412'; // Glowing orange/dark orange
         this.ctx.fillRect(screenX + 10, screenY + 10, 2, 2);
         this.ctx.fillRect(screenX + 28, screenY + 22, 2, 2);
+      } else if (theme === 'ice') {
+        // Snow/ice floor styling
+        this.ctx.fillStyle = isVisible ? '#0f1b29' : '#050b12'; // dark blue-gray
+        this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
+        
+        this.ctx.strokeStyle = isVisible ? '#1e3a5f' : '#0b1626'; // blue-gray grid
+        this.ctx.lineWidth = 0.5;
+        this.ctx.strokeRect(screenX, screenY, this.tileSize, this.tileSize);
+
+        // Ice sparks
+        this.ctx.fillStyle = isVisible ? '#38bdf8' : '#0369a1';
+        this.ctx.fillRect(screenX + 12, screenY + 8, 2, 2);
+        this.ctx.fillRect(screenX + 24, screenY + 24, 2, 2);
+      } else if (theme === 'void') {
+        // Cosmic nebula floor styling
+        this.ctx.fillStyle = isVisible ? '#090514' : '#020105'; // almost black purple
+        this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
+        
+        this.ctx.strokeStyle = isVisible ? '#2e1065' : '#0f0521'; // dark purple grid
+        this.ctx.lineWidth = 0.5;
+        this.ctx.strokeRect(screenX, screenY, this.tileSize, this.tileSize);
+
+        // Nebula stars
+        this.ctx.fillStyle = isVisible ? '#a855f7' : '#4a044e';
+        this.ctx.fillRect(screenX + 16, screenY + 16, 2, 2);
+        this.ctx.fillRect(screenX + 6, screenY + 26, 2, 2);
       } else {
-        // Floor styling
+        // Floor styling (Default)
         this.ctx.fillStyle = isVisible ? '#111827' : '#030712'; // gray-900 visible, gray-950 shadow
         this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
         
@@ -209,100 +272,77 @@ export class DungeonRenderer {
         this.ctx.fillRect(screenX + this.tileSize / 2 - 1, screenY + this.tileSize / 2 - 1, 3, 3);
       }
     } else if (tile.type === 'stairs') {
-      if (isHellTheme) {
-        // Fiery Portal / Stairs
+      const stairsSprite = [
+        [0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,1,1,1,1],
+        [0,0,0,0,0,0,0,0,1,2,2,2],
+        [0,0,0,0,0,1,1,1,1,2,2,2],
+        [0,0,0,0,0,1,2,2,2,2,2,2],
+        [0,0,1,1,1,1,2,2,2,2,2,2],
+        [0,0,1,2,2,2,2,2,2,2,2,2],
+        [1,1,1,2,2,2,2,2,2,2,2,2],
+        [1,2,2,2,2,2,2,2,2,2,2,2],
+        [1,2,2,2,2,2,2,2,2,2,2,2],
+        [1,1,1,1,1,1,1,1,1,1,1,1],
+        [0,0,0,0,0,0,0,0,0,0,0,0]
+      ];
+      
+      const pixelSize = 3;
+      const startX = screenX + (this.tileSize - pixelSize * 12) / 2;
+      const startY = screenY + (this.tileSize - pixelSize * 12) / 2;
+      const pulse = (Math.sin(this.pulseTime * 4) + 1) / 2;
+
+      let colors: { [key: number]: string } = {};
+      let pulseStyle = '';
+
+      if (theme === 'hell') {
         this.ctx.fillStyle = isVisible ? '#450a0a' : '#2d060e';
         this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
-
-        // Draw procedural stairs sprite with hot lava colors
-        const stairsSprite = [
-          [0,0,0,0,0,0,0,0,0,0,0,0],
-          [0,0,0,0,0,0,0,0,1,1,1,1],
-          [0,0,0,0,0,0,0,0,1,2,2,2],
-          [0,0,0,0,0,1,1,1,1,2,2,2],
-          [0,0,0,0,0,1,2,2,2,2,2,2],
-          [0,0,1,1,1,1,2,2,2,2,2,2],
-          [0,0,1,2,2,2,2,2,2,2,2,2],
-          [1,1,1,2,2,2,2,2,2,2,2,2],
-          [1,2,2,2,2,2,2,2,2,2,2,2],
-          [1,2,2,2,2,2,2,2,2,2,2,2],
-          [1,1,1,1,1,1,1,1,1,1,1,1],
-          [0,0,0,0,0,0,0,0,0,0,0,0]
-        ];
-        
-        const pixelSize = 3;
-        const startX = screenX + (this.tileSize - pixelSize * 12) / 2;
-        const startY = screenY + (this.tileSize - pixelSize * 12) / 2;
-        
-        const colors: { [key: number]: string } = {
-          1: isVisible ? '#b91c1c' : '#450a0a', // Crimson red outline
-          2: isVisible ? '#f97316' : '#b91c1c'  // Glowing orange step surface
+        colors = {
+          1: isVisible ? '#b91c1c' : '#450a0a',
+          2: isVisible ? '#f97316' : '#b91c1c'
         };
-        
-        for (let r = 0; r < 12; r++) {
-          for (let c = 0; c < 12; c++) {
-            const val = stairsSprite[r][c];
-            if (val !== 0) {
-              this.ctx.fillStyle = colors[val];
-              this.ctx.fillRect(startX + c * pixelSize, startY + r * pixelSize, pixelSize, pixelSize);
-            }
-          }
-        }
-        
-        // Pulse animation around stairs
-        if (isVisible) {
-          const pulse = (Math.sin(this.pulseTime * 4) + 1) / 2;
-          this.ctx.strokeStyle = `rgba(249, 115, 22, ${0.1 + pulse * 0.25})`;
-          this.ctx.lineWidth = 2;
-          this.ctx.strokeRect(screenX + 2, screenY + 2, this.tileSize - 4, this.tileSize - 4);
-        }
-      } else {
-        // Stair styling
-        this.ctx.fillStyle = isVisible ? '#064e3b' : '#022c22'; // Emerald green theme
+        pulseStyle = `rgba(249, 115, 22, ${0.1 + pulse * 0.25})`;
+      } else if (theme === 'ice') {
+        this.ctx.fillStyle = isVisible ? '#0c4a6e' : '#082f49';
         this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
-        
-        // Draw procedural stairs sprite
-        const stairsSprite = [
-          [0,0,0,0,0,0,0,0,0,0,0,0],
-          [0,0,0,0,0,0,0,0,1,1,1,1],
-          [0,0,0,0,0,0,0,0,1,2,2,2],
-          [0,0,0,0,0,1,1,1,1,2,2,2],
-          [0,0,0,0,0,1,2,2,2,2,2,2],
-          [0,0,1,1,1,1,2,2,2,2,2,2],
-          [0,0,1,2,2,2,2,2,2,2,2,2],
-          [1,1,1,2,2,2,2,2,2,2,2,2],
-          [1,2,2,2,2,2,2,2,2,2,2,2],
-          [1,2,2,2,2,2,2,2,2,2,2,2],
-          [1,1,1,1,1,1,1,1,1,1,1,1],
-          [0,0,0,0,0,0,0,0,0,0,0,0]
-        ];
-        
-        const pixelSize = 3;
-        const startX = screenX + (this.tileSize - pixelSize * 12) / 2;
-        const startY = screenY + (this.tileSize - pixelSize * 12) / 2;
-        
-        const colors: { [key: number]: string } = {
-          1: isVisible ? '#047857' : '#022c22', // Green step outline
-          2: isVisible ? '#10b981' : '#064e3b'  // Green step surface
+        colors = {
+          1: isVisible ? '#0284c7' : '#0c4a6e',
+          2: isVisible ? '#38bdf8' : '#0284c7'
         };
-        
-        for (let r = 0; r < 12; r++) {
-          for (let c = 0; c < 12; c++) {
-            const val = stairsSprite[r][c];
-            if (val !== 0) {
-              this.ctx.fillStyle = colors[val];
-              this.ctx.fillRect(startX + c * pixelSize, startY + r * pixelSize, pixelSize, pixelSize);
-            }
+        pulseStyle = `rgba(56, 189, 248, ${0.1 + pulse * 0.25})`;
+      } else if (theme === 'void') {
+        this.ctx.fillStyle = isVisible ? '#4c1d95' : '#2e1065';
+        this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
+        colors = {
+          1: isVisible ? '#7e22ce' : '#4c1d95',
+          2: isVisible ? '#c084fc' : '#7e22ce'
+        };
+        pulseStyle = `rgba(168, 85, 247, ${0.1 + pulse * 0.25})`;
+      } else {
+        this.ctx.fillStyle = isVisible ? '#064e3b' : '#022c22';
+        this.ctx.fillRect(screenX, screenY, this.tileSize, this.tileSize);
+        colors = {
+          1: isVisible ? '#047857' : '#022c22',
+          2: isVisible ? '#10b981' : '#064e3b'
+        };
+        pulseStyle = `rgba(16, 185, 129, ${0.1 + pulse * 0.2})`;
+      }
+
+      for (let r = 0; r < 12; r++) {
+        for (let c = 0; c < 12; c++) {
+          const val = stairsSprite[r][c];
+          if (val !== 0) {
+            this.ctx.fillStyle = colors[val];
+            this.ctx.fillRect(startX + c * pixelSize, startY + r * pixelSize, pixelSize, pixelSize);
           }
         }
-        
-        // Pulse animation around stairs
-        if (isVisible) {
-          const pulse = (Math.sin(this.pulseTime * 4) + 1) / 2;
-          this.ctx.strokeStyle = `rgba(16, 185, 129, ${0.1 + pulse * 0.2})`;
-          this.ctx.lineWidth = 2;
-          this.ctx.strokeRect(screenX + 2, screenY + 2, this.tileSize - 4, this.tileSize - 4);
-        }
+      }
+
+      if (isVisible) {
+        this.ctx.strokeStyle = pulseStyle;
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(screenX + 2, screenY + 2, this.tileSize - 4, this.tileSize - 4);
       }
     }
   }
@@ -408,7 +448,7 @@ export class DungeonRenderer {
     }
 
     // Highlight boss
-    if (enemy.type === 'dragon' || enemy.type === 'demon_king') {
+    if (enemy.type === 'dragon' || enemy.type === 'demon_king' || enemy.type === 'crystal_golem' || enemy.type === 'abyss_lord') {
       this.ctx.shadowColor = enemy.color;
       this.ctx.shadowBlur = 16;
       
@@ -417,7 +457,11 @@ export class DungeonRenderer {
         screenX + (this.tileSize * ew) / 2, screenY + (this.tileSize * eh) / 2, 8,
         screenX + (this.tileSize * ew) / 2, screenY + (this.tileSize * eh) / 2, this.tileSize * 2.2
       );
-      const rgb = enemy.type === 'dragon' ? '220, 38, 38' : '192, 132, 252';
+      let rgb = '220, 38, 38'; // red (dragon/demon_king)
+      if (enemy.type === 'crystal_golem') rgb = '34, 211, 238'; // cyan
+      else if (enemy.type === 'abyss_lord') rgb = '236, 72, 153'; // pink
+      else if (enemy.type === 'demon_king') rgb = '192, 132, 252'; // purple
+
       grad.addColorStop(0, `rgba(${rgb}, ${0.35 + pulse * 0.35})`);
       grad.addColorStop(1, `rgba(${rgb}, 0)`);
       this.ctx.fillStyle = grad;
@@ -440,6 +484,8 @@ export class DungeonRenderer {
       sprite = ENEMY_SPRITES[enemy.type];
       if (enemy.type === 'demon_king') {
         colors = ENEMY_COLORS.demon_king;
+      } else if (enemy.type === 'abyss_lord') {
+        colors = ENEMY_COLORS.abyss_lord;
       } else if (enemy.type === 'goblin') {
         colors = {
           1: '#84cc16', // Goblin green skin
@@ -448,11 +494,63 @@ export class DungeonRenderer {
           4: '#78350f', // Brown tunic
           5: '#451a03'  // Dark shoes
         };
+      } else if (enemy.type === 'hobgoblin') {
+        colors = {
+          1: '#047857', // Deep forest green skin
+          2: '#facc15', // Amber eye
+          3: '#064e3b', // Mouth shadow
+          4: '#1e293b', // Dark slate tunic
+          5: '#0f172a'  // Slate shoes
+        };
+      } else if (enemy.type === 'goblin_warrior') {
+        colors = {
+          1: '#16a34a', // Tough green skin
+          2: '#dc2626', // Crimson eye
+          3: '#14532d', // Mouth shadow
+          4: '#475569', // Iron chestplate (body)
+          5: '#1e293b', // Iron greaves (shoes)
+          6: '#94a3b8', // Iron helmet
+          7: '#cbd5e1'  // Steel shield / sword
+        };
+      } else if (enemy.type === 'goblin_lord') {
+        colors = {
+          1: '#0f766e', // Teal/green royal skin
+          2: '#f43f5e', // Glowing ruby eye
+          3: '#115e59', // Mouth shadow
+          4: '#6d28d9', // Royal purple robe
+          5: '#d97706', // Golden boots
+          6: '#facc15', // Gold crown
+          7: '#b91c1c'  // Royal crimson cape
+        };
       } else if (enemy.type === 'skeleton') {
         colors = {
           1: '#f1f5f9', // Skeleton white bone
           2: '#0f172a', // Eye sockets
           3: '#94a3b8'  // Teeth/details
+        };
+      } else if (enemy.type === 'skeleton_warrior') {
+        colors = {
+          1: '#cbd5e1', // Aged bone
+          2: '#ef4444', // Red eyes
+          3: '#64748b', // Details
+          5: '#475569', // Iron helmet
+          6: '#cbd5e1'  // Steel sword
+        };
+      } else if (enemy.type === 'death_knight') {
+        colors = {
+          1: '#94a3b8', // Dark bone
+          2: '#dc2626', // Crimson eyes
+          3: '#475569', // Details
+          5: '#0f172a', // Horned helmet
+          6: '#b91c1c', // Crimson greatsword
+          7: '#1e293b'  // Dark chestplate
+        };
+      } else if (enemy.type === 'frost_skeleton') {
+        colors = {
+          1: '#93c5fd', // Ice blue bone
+          2: '#67e8f9', // Cyan glowing eyes
+          3: '#2563eb', // Shading
+          5: '#ffffff'  // Sparkling ice crystals
         };
       } else if (enemy.type === 'golem') {
         colors = {
@@ -477,11 +575,25 @@ export class DungeonRenderer {
           5: '#f43f5e'  // Ruby gem amulet
         };
       } else if (enemy.type === 'hellhound') {
-        colors = {
-          1: '#7c2d12', // Dark red-orange outline
-          2: '#ea580c', // Bright orange fur
-          3: '#eab308'  // Yellow glowing eyes
-        };
+        if (enemy.name === 'フロストハウンド') {
+          colors = {
+            1: '#0369a1', // Dark blue outline
+            2: '#38bdf8', // Ice blue fur
+            3: '#e0f7fa'  // Glowing cyan/white eyes
+          };
+        } else if (enemy.name === 'ネビュラハウンド') {
+          colors = {
+            1: '#1e1b4b', // Dark purple outline
+            2: '#4c1d95', // Purple nebula fur
+            3: '#f472b6'  // Glowing pink eyes
+          };
+        } else {
+          colors = {
+            1: '#7c2d12', // Dark red-orange outline
+            2: '#ea580c', // Bright orange fur
+            3: '#eab308'  // Yellow glowing eyes
+          };
+        }
       } else if (enemy.type === 'vampire') {
         colors = {
           1: '#1e1b4b', // Dark purple cape
@@ -491,18 +603,55 @@ export class DungeonRenderer {
           5: '#ffffff'  // Fangs / mouth
         };
       } else if (enemy.type === 'demon') {
-        colors = {
-          1: '#7f1d1d', // Dark blood red outline
-          2: '#dc2626', // Red skin
-          3: '#fbbf24', // Yellow glowing eyes
-          4: '#450a0a'  // Mouth shadow
-        };
+        if (enemy.name === 'ヴォイドデーモン') {
+          colors = {
+            1: '#2e1065', // Dark purple outline
+            2: '#7e22ce', // Violet skin
+            3: '#f472b6', // Glowing pink eyes
+            4: '#0f0521'  // Deep mouth shadow
+          };
+        } else {
+          colors = {
+            1: '#7f1d1d', // Dark blood red outline
+            2: '#dc2626', // Red skin
+            3: '#fbbf24', // Yellow glowing eyes
+            4: '#450a0a'  // Mouth shadow
+          };
+        }
       } else if (enemy.type === 'archdemon') {
+        if (enemy.name === 'アビスデーモン') {
+          colors = {
+            1: '#090514', // Deep abyss dark outline
+            2: '#4a044e', // Deep magenta skin
+            3: '#facc15', // Gold glowing eyes
+            4: '#f1f5f9'  // Fangs
+          };
+        } else {
+          colors = {
+            1: '#4c0519', // Deep dark maroon outline
+            2: '#9f1239', // Crimson skin
+            3: '#fbbf24', // Gold glowing eyes
+            4: '#ffffff'  // Fangs
+          };
+        }
+      } else if (enemy.type === 'yeti') {
         colors = {
-          1: '#4c0519', // Deep dark maroon outline
-          2: '#9f1239', // Crimson skin
-          3: '#fbbf24', // Gold glowing eyes
-          4: '#ffffff'  // Fangs
+          1: '#f1f5f9', // White fur
+          2: '#3b82f6', // Blue eyes
+          3: '#93c5fd'  // Light blue skin
+        };
+      } else if (enemy.type === 'void_specter') {
+        colors = {
+          1: '#1e1b4b', // Dark purple shadow
+          2: '#a855f7', // Purple eyes
+          3: '#ec4899'  // Pink core
+        };
+      } else if (enemy.type === 'crystal_golem') {
+        colors = {
+          1: '#083344', // Dark cyan outline
+          2: '#0e7490', // Cyan base
+          3: '#22d3ee', // Glowing light cyan
+          4: '#ffffff'  // Crystal shine
         };
       }
     }
@@ -511,7 +660,7 @@ export class DungeonRenderer {
       const pixelSize = 3;
       const slimeYOffset = isSlime ? breath : 0;
       const yBob = !isSlime ? breath : 0;
-      const sizeLimit = (enemy.type === 'dragon' || enemy.type === 'demon_king') ? 24 : 12;
+      const sizeLimit = (enemy.type === 'dragon' || enemy.type === 'demon_king' || enemy.type === 'crystal_golem' || enemy.type === 'abyss_lord') ? 24 : 12;
 
       const startX = screenX + (this.tileSize * ew - pixelSize * sizeLimit) / 2;
       const startY = screenY + (this.tileSize * eh - pixelSize * sizeLimit) / 2 + slimeYOffset + yBob;

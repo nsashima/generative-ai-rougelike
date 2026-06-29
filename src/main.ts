@@ -27,6 +27,7 @@ let dbWarp10Btn: HTMLButtonElement;
 let dbGodBtn: HTMLButtonElement;
 let dbMapBtn: HTMLButtonElement;
 let dbGoldBtn: HTMLButtonElement;
+let dbMuseumBtn: HTMLButtonElement;
 let dbCloseBtn: HTMLButtonElement;
 
 // Stats elements
@@ -204,6 +205,7 @@ window.addEventListener('DOMContentLoaded', () => {
   dbGodBtn = document.getElementById('db-god-btn') as HTMLButtonElement;
   dbMapBtn = document.getElementById('db-map-btn') as HTMLButtonElement;
   dbGoldBtn = document.getElementById('db-gold-btn') as HTMLButtonElement;
+  dbMuseumBtn = document.getElementById('db-museum-btn') as HTMLButtonElement;
   dbCloseBtn = document.getElementById('db-close-btn') as HTMLButtonElement;
 
   // Item Detail elements
@@ -819,6 +821,11 @@ function setupEvents() {
     updateHUD();
   });
 
+  dbMuseumBtn.addEventListener('click', () => {
+    engine.createMuseumRoom();
+    updateHUD();
+  });
+
   dbCloseBtn.addEventListener('click', () => {
     debugPanel.classList.add('hidden-debug');
   });
@@ -1394,7 +1401,8 @@ function renderShop() {
       const nameSpan = document.createElement('span');
       nameSpan.className = 'shop-item-name';
       nameSpan.style.color = item.color;
-      nameSpan.innerText = item.name;
+      const durStr = item.durability !== undefined ? ` (耐久:${item.durability}/${item.maxDurability})` : '';
+      nameSpan.innerText = item.name + durStr;
 
       const descSpan = document.createElement('span');
       descSpan.className = 'shop-item-desc';
@@ -1487,12 +1495,14 @@ function openItemDetail(index: number, type: 'inventory' | 'weapon' | 'armor' | 
   if (item.type === 'weapon_sword' || item.type === 'armor_shield') {
     const durStr = item.durability !== undefined ? ` (耐久:${item.durability}/${item.maxDurability})` : '';
     valStr = `+${item.value}${durStr}`;
-  } else if (item.type === 'ring_attack' || item.type === 'ring_defense') {
-    valStr = `効果量 +${item.value}`;
+  } else if (item.type === 'ring_attack') {
+    valStr = `攻撃力 +${item.value}`;
+  } else if (item.type === 'ring_defense') {
+    valStr = `防御力 +${item.value}`;
   } else if (item.type === 'ring_durability') {
-    valStr = `耐久節約確率 ${item.value}%`;
+    valStr = `耐久消費無効確率 ${item.value}%`;
   } else if (item.type === 'ring_reflect') {
-    valStr = `反射割合 ${item.value}%`;
+    valStr = `被ダメージ反射割合 ${item.value}%`;
   } else if (item.type === 'ring_heal') {
     valStr = `${item.value}ターン毎にHP1回復`;
   } else if (item.type === 'potion_heal') {

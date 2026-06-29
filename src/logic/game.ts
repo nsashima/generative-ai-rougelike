@@ -1,4 +1,4 @@
-import { GameState, Entity, Item } from '../types';
+import { GameState, Entity, Item, Tile, ItemType, EntityType } from '../types';
 import { generateDungeon, computeFOV } from './dungeon';
 import { soundEffects } from './sound';
 import { weaponNames, weaponColors, armorNames, armorColors } from '../data/items';
@@ -14,6 +14,7 @@ export class GameEngine {
   public equippedArmor: Item | null = null;
   public equippedRing: Item | null = null;
   public debugAllVisible: boolean = false;
+  public isMuseumMode: boolean = false;
   public currentShopItems: any[] | null = null;
   
   constructor() {
@@ -43,6 +44,7 @@ export class GameEngine {
     this.equippedArmor = null;
     this.equippedRing = null;
     this.debugAllVisible = false;
+    this.isMuseumMode = false;
     this.currentShopItems = null;
 
     this.state = {
@@ -245,9 +247,23 @@ export class GameEngine {
       this.addMessage('ゴブリンキングが倒れ、下り階段が現れた！');
       soundEffects.playStairs();
     } else if (enemy.type === 'demon_king') {
-      this.state.gold += 9999; // Add relic value to final gold/score
-      this.addMessage('「邪教の心眼」を討伐した！「生成AIの秘宝」を取り戻し、ダンジョンを完全に支配した！');
-      this.spawnParticle(enemy.x, enemy.y, '#f43f5e', 45, 'VICTORY!');
+      this.addMessage('「邪教の心眼」を討伐した！');
+      this.spawnParticle(enemy.x, enemy.y, '#f43f5e', 30, '心眼討伐！');
+      // Spawn stairs
+      this.state.tiles[enemy.x][enemy.y].type = 'stairs';
+      this.addMessage('邪教の心眼が滅び、さらに深淵へと進む下り階段が現れた！');
+      soundEffects.playStairs();
+    } else if (enemy.type === 'crystal_golem') {
+      this.addMessage('「結晶の守護者」を討伐した！');
+      this.spawnParticle(enemy.x, enemy.y, '#22d3ee', 30, '結晶守護者討伐！');
+      // Spawn stairs
+      this.state.tiles[enemy.x][enemy.y].type = 'stairs';
+      this.addMessage('結晶の守護者が砕け散り、宇宙の深淵へと進む下り階段が現れた！');
+      soundEffects.playStairs();
+    } else if (enemy.type === 'abyss_lord') {
+      this.state.gold += 99999; // Add relic value to final gold/score
+      this.addMessage('「深淵の覇王」を討伐した！「生成AIの秘宝」を取り戻し、ダンジョンを完全に支配した！');
+      this.spawnParticle(enemy.x, enemy.y, '#ec4899', 45, 'VICTORY!');
       this.state.status = 'victory';
       soundEffects.playLevelUp();
     }
@@ -330,6 +346,7 @@ export class GameEngine {
 
   // Enemy Turn AI
   processEnemyTurns() {
+    if (this.isMuseumMode) return;
     const player = this.state.player;
 
     // Process ring_heal effect (restore 1 HP every X turns)
@@ -1216,5 +1233,328 @@ export class GameEngine {
     this.addMessage(`${item.name} を装備から外した。`);
     soundEffects.playGold();
     return true;
+  }
+
+  createMuseumRoom() {
+    this.isMuseumMode = true;
+    this.debugAllVisible = true;
+    this.state.dungeonLevel = 99;
+    this.state.gold = 9999;
+    this.state.turn = 1;
+
+    const width = 45;
+    const height = 30;
+    this.state.width = width;
+    this.state.height = height;
+
+    const tiles: Tile[][] = [];
+    for (let x = 0; x < width; x++) {
+      tiles[x] = [];
+      for (let y = 0; y < height; y++) {
+        const isBorder = x === 0 || x === width - 1 || y === 0 || y === height - 1;
+        tiles[x][y] = {
+          x,
+          y,
+          type: isBorder ? 'wall' : 'floor',
+          explored: true,
+          visible: true
+        };
+      }
+    }
+    this.state.tiles = tiles;
+
+    this.state.player.x = 2;
+    this.state.player.y = 2;
+    this.state.player.hp = this.state.player.maxHp;
+
+    const items: Item[] = [];
+
+    const potionsAndScrolls: { type: ItemType; name: string; color: string; desc: string }[] = [
+      { type: 'potion_heal', name: '回復薬', color: '#ef4444', desc: 'HPを最大値の40%回復する。' },
+      { type: 'potion_strength', name: '力増強の薬', color: '#3b82f6', desc: '攻撃力を永久に 1 上昇させる。' },
+      { type: 'scroll_teleport', name: 'テレポートの巻物', color: '#8b5cf6', desc: 'ダンジョンのどこかへテレポートする。' },
+      { type: 'scroll_fireball', name: '火炎の巻物', color: '#f97316', desc: '視界内の最も近い敵にダメージを与える。' },
+      { type: 'scroll_sleep', name: '眠りの巻物', color: '#38bdf8', desc: '周囲の敵を深い眠りに誘う。' },
+      { type: 'scroll_thunder', name: '雷光の巻物', color: '#facc15', desc: '視界内の敵全員に雷撃を落とす。' },
+      { type: 'scroll_repair', name: '修復の巻物', color: '#4ade80', desc: '装備の耐久値を回復する。' },
+      { type: 'scroll_drain', name: '吸血の巻物', color: '#f472b6', desc: '視界内の敵から生命力を吸収する。' },
+      { type: 'gold', name: '生成AIの秘宝', color: '#ec4899', desc: '究極のアーティファクト。手に入れると勝利する。' }
+    ];
+
+    potionsAndScrolls.forEach((p, idx) => {
+      items.push({
+        id: `item_p_${idx}`,
+        x: 4 + idx * 3,
+        y: 5,
+        type: p.type,
+        name: p.name,
+        value: p.type === 'gold' ? 99999 : (p.type.startsWith('potion') ? 40 : 25),
+        description: p.desc,
+        symbol: p.type === 'gold' ? '*' : (p.type.startsWith('potion') ? '!' : '?'),
+        color: p.color
+      });
+    });
+
+    for (let i = 0; i < 10; i++) {
+      items.push({
+        id: `item_w1_${i}`,
+        x: 4 + i * 3,
+        y: 8,
+        type: 'weapon_sword',
+        name: weaponNames[i],
+        color: weaponColors[i],
+        symbol: '/',
+        value: 2 + i * 2,
+        durability: 30,
+        maxDurability: 30,
+        description: `攻撃力が ${2 + i * 2} 上がる武器。`
+      });
+    }
+
+    for (let i = 10; i < 20; i++) {
+      items.push({
+        id: `item_w2_${i}`,
+        x: 4 + (i - 10) * 3,
+        y: 11,
+        type: 'weapon_sword',
+        name: weaponNames[i],
+        color: weaponColors[i],
+        symbol: '/',
+        value: 2 + i * 2,
+        durability: 40,
+        maxDurability: 40,
+        description: `攻撃力が ${2 + i * 2} 上がる武器。`
+      });
+    }
+    items.push({
+      id: 'item_w_blizzard',
+      x: 34,
+      y: 11,
+      type: 'weapon_sword',
+      name: '吹雪の魔剣',
+      color: '#06b6d4',
+      symbol: '/',
+      value: 28,
+      durability: 60,
+      maxDurability: 60,
+      description: '極寒の氷結晶から鍛え出された魔剣。敵を凍てつかせる力を持つ。'
+    });
+
+    for (let i = 0; i < 10; i++) {
+      items.push({
+        id: `item_a1_${i}`,
+        x: 4 + i * 3,
+        y: 14,
+        type: 'armor_shield',
+        name: armorNames[i],
+        color: armorColors[i],
+        symbol: '[',
+        value: 1 + i * 1,
+        durability: 30,
+        maxDurability: 30,
+        description: `防御力が ${1 + i * 1} 上がる防具。`
+      });
+    }
+
+    for (let i = 10; i < 20; i++) {
+      items.push({
+        id: `item_a2_${i}`,
+        x: 4 + (i - 10) * 3,
+        y: 17,
+        type: 'armor_shield',
+        name: armorNames[i],
+        color: armorColors[i],
+        symbol: '[',
+        value: 1 + i * 1,
+        durability: 40,
+        maxDurability: 40,
+        description: `防御力が ${1 + i * 1} 上がる防具。`
+      });
+    }
+    items.push({
+      id: 'item_a_kingshield',
+      x: 34,
+      y: 17,
+      type: 'armor_shield',
+      name: 'キングの盾',
+      color: '#fbbf24',
+      symbol: '[',
+      value: 8,
+      durability: 45,
+      maxDurability: 45,
+      description: 'ゴブリンキングが守っていた、比類なき堅牢さを誇る金色の盾。'
+    });
+
+    const rings: { type: ItemType; name: string; color: string; val: number; desc: string }[] = [
+      { type: 'ring_attack', name: '力の指輪 (+5)', color: '#fb7185', val: 5, desc: '攻撃力が 5 上がる指輪。' },
+      { type: 'ring_defense', name: '守りの指輪 (+5)', color: '#38bdf8', val: 5, desc: '防御力が 5 上がる指輪。' },
+      { type: 'ring_durability', name: '節約の指輪', color: '#34d399', val: 50, desc: '50%の確率で武器・防具の耐久消費を防ぐ指輪。' },
+      { type: 'ring_reflect', name: '反撃の指輪', color: '#fb923c', val: 30, desc: '受けたダメージの30%を敵に跳ね返す指輪。' },
+      { type: 'ring_heal', name: '癒やしの指輪', color: '#a855f7', val: 3, desc: '3ターンごとにHPが1回復する指輪。' },
+      { type: 'ring_attack', name: '心眼の指輪', color: '#f43f5e', val: 10, desc: '邪教の心眼が秘めていた、敵の急所を見透かす怪しい指輪。' }
+    ];
+    rings.forEach((r, idx) => {
+      items.push({
+        id: `item_ring_${idx}`,
+        x: 4 + idx * 3,
+        y: 20,
+        type: r.type,
+        name: r.name,
+        color: r.color,
+        symbol: 'o',
+        value: r.val,
+        description: r.desc
+      });
+    });
+
+    this.state.items = items;
+
+    const normalMobs: { type: EntityType; name: string; hp: number; att: number; def: number; symbol: string; color: string }[] = [
+      { type: 'slime', name: 'スライム', hp: 10, att: 4, def: 1, symbol: 's', color: '#22c55e' },
+      { type: 'goblin', name: 'ゴブリン', hp: 15, att: 6, def: 1, symbol: 'g', color: '#84cc16' },
+      { type: 'slime', name: 'ポイズンスライム', hp: 16, att: 7, def: 2, symbol: 's', color: '#fb923c' },
+      { type: 'goblin_warrior', name: 'ゴブリン戦士', hp: 22, att: 9, def: 2, symbol: 'g', color: '#16a34a' },
+      { type: 'skeleton', name: 'スケルトン', hp: 20, att: 11, def: 3, symbol: 't', color: '#cbd5e1' },
+      { type: 'hobgoblin', name: 'ホブゴブリン', hp: 30, att: 14, def: 3, symbol: 'h', color: '#047857' },
+      { type: 'skeleton_warrior', name: 'スケルトン戦士', hp: 28, att: 16, def: 4, symbol: 'T', color: '#cbd5e1' },
+      { type: 'golem', name: 'ストーンゴーレム', hp: 45, att: 18, def: 6, symbol: 'G', color: '#78716c' },
+      { type: 'death_knight', name: 'デスナイト', hp: 45, att: 22, def: 5, symbol: 'K', color: '#475569' },
+      { type: 'golem', name: 'アイアンゴーレム', hp: 60, att: 24, def: 8, symbol: 'G', color: '#4b5563' },
+      { type: 'hellhound', name: 'ヘルハウンド', hp: 40, att: 18, def: 3, symbol: 'f', color: '#f97316' },
+      { type: 'goblin_lord', name: 'ゴブリンロード', hp: 50, att: 22, def: 4, symbol: 'L', color: '#0f766e' },
+      { type: 'vampire', name: 'ヴァンパイア', hp: 60, att: 28, def: 4, symbol: 'v', color: '#ec4899' },
+      { type: 'demon', name: 'デーモン', hp: 70, att: 32, def: 5, symbol: 'd', color: '#dc2626' },
+      { type: 'archdemon', name: 'アークデーモン', hp: 95, att: 36, def: 7, symbol: 'A', color: '#b91c1c' },
+      { type: 'slime', name: 'アイススライム', hp: 90, att: 30, def: 5, symbol: 's', color: '#67e8f9' },
+      { type: 'frost_skeleton', name: 'フロストスケルトン', hp: 100, att: 36, def: 6, symbol: 't', color: '#93c5fd' },
+      { type: 'yeti', name: 'イエティ', hp: 120, att: 42, def: 8, symbol: 'Y', color: '#f1f5f9' },
+      { type: 'hellhound', name: 'フロストハウンド', hp: 110, att: 45, def: 6, symbol: 'f', color: '#38bdf8' },
+      { type: 'slime', name: 'ヴォイドスライム', hp: 140, att: 48, def: 8, symbol: 's', color: '#c084fc' },
+      { type: 'hellhound', name: 'ネビュラハウンド', hp: 150, att: 55, def: 8, symbol: 'f', color: '#4c1d95' },
+      { type: 'void_specter', name: 'ヴォイドスペクター', hp: 160, att: 62, def: 10, symbol: 'V', color: '#1e1b4b' },
+      { type: 'demon', name: 'ヴォイドデーモン', hp: 180, att: 70, def: 12, symbol: 'd', color: '#7e22ce' },
+      { type: 'archdemon', name: 'アビスデーモン', hp: 220, att: 78, def: 14, symbol: 'A', color: '#4a044e' },
+      { type: 'merchant', name: '商人', hp: 999, att: 0, def: 999, symbol: 'M', color: '#f472b6' }
+    ];
+
+    const enemies: Entity[] = [];
+
+    for (let i = 0; i < 13; i++) {
+      const mob = normalMobs[i];
+      if (mob) {
+        enemies.push({
+          id: `enemy_n1_${i}`,
+          x: 3 + i * 3,
+          y: 23,
+          type: mob.type,
+          name: mob.name,
+          hp: mob.hp,
+          maxHp: mob.hp,
+          att: mob.att,
+          def: mob.def,
+          xpValue: 0,
+          level: 1,
+          symbol: mob.symbol,
+          color: mob.color
+        });
+      }
+    }
+
+    for (let i = 13; i < normalMobs.length; i++) {
+      const mob = normalMobs[i];
+      if (mob) {
+        enemies.push({
+          id: `enemy_n2_${i}`,
+          x: 3 + (i - 13) * 3,
+          y: 25,
+          type: mob.type,
+          name: mob.name,
+          hp: mob.hp,
+          maxHp: mob.hp,
+          att: mob.att,
+          def: mob.def,
+          xpValue: 0,
+          level: 1,
+          symbol: mob.symbol,
+          color: mob.color
+        });
+      }
+    }
+
+    enemies.push({
+      id: 'enemy_boss_gob',
+      x: 4,
+      y: 27,
+      type: 'dragon',
+      name: 'ゴブリンキング',
+      hp: 160,
+      maxHp: 160,
+      att: 32,
+      def: 10,
+      xpValue: 0,
+      level: 5,
+      symbol: 'D',
+      color: '#dc2626',
+      width: 2,
+      height: 2
+    });
+
+    enemies.push({
+      id: 'enemy_boss_sashima',
+      x: 10,
+      y: 27,
+      type: 'demon_king',
+      name: '邪教の心眼',
+      hp: 350,
+      maxHp: 350,
+      att: 55,
+      def: 18,
+      xpValue: 0,
+      level: 10,
+      symbol: 'E',
+      color: '#f43f5e',
+      width: 2,
+      height: 2
+    });
+
+    enemies.push({
+      id: 'enemy_boss_golem',
+      x: 16,
+      y: 27,
+      type: 'crystal_golem',
+      name: '結晶の守護者',
+      hp: 600,
+      maxHp: 600,
+      att: 75,
+      def: 24,
+      xpValue: 0,
+      level: 15,
+      symbol: 'C',
+      color: '#22d3ee',
+      width: 2,
+      height: 2
+    });
+
+    enemies.push({
+      id: 'enemy_boss_abyss',
+      x: 22,
+      y: 27,
+      type: 'abyss_lord',
+      name: '深淵の覇王',
+      hp: 1200,
+      maxHp: 1200,
+      att: 110,
+      def: 35,
+      xpValue: 0,
+      level: 20,
+      symbol: 'A',
+      color: '#ec4899',
+      width: 2,
+      height: 2
+    });
+
+    this.state.enemies = enemies;
+    this.state.status = 'playing';
+    this.addMessage('【デバッグ】すべてのモンスターとアイテムの展示テスト部屋を生成しました。敵は移動・攻撃しません。');
   }
 }

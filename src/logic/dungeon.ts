@@ -2,6 +2,20 @@ import { Tile, Entity, EntityType, Item, ItemType } from '../types';
 import { enemyTypesByLevel } from '../data/enemies';
 import { weaponNames, weaponColors, armorNames, armorColors } from '../data/items';
 
+// Calculate first appearance level for each enemy type/name to scale stats based on depth difference
+const firstAppearanceLevel: { [key: string]: number } = {};
+for (const [levelStr, templates] of Object.entries(enemyTypesByLevel)) {
+  const lvl = parseInt(levelStr);
+  for (const t of templates) {
+    if (firstAppearanceLevel[t.name] === undefined) {
+      firstAppearanceLevel[t.name] = lvl;
+    } else {
+      firstAppearanceLevel[t.name] = Math.min(firstAppearanceLevel[t.name], lvl);
+    }
+  }
+}
+
+
 // Seeded or standard random utils
 function randomRange(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -86,13 +100,13 @@ export function generateDungeon(level: number, width: number, height: number): {
     const currCenterX = Math.floor(currRoom.x + currRoom.w / 2);
     const currCenterY = Math.floor(currRoom.y + currRoom.h / 2);
 
-    // Random choice: Horizontal then Vertical, or Vertical then Horizontal
+    const isBossLevel = level % 5 === 0;
     if (Math.random() < 0.5) {
-      carveHorizontal(tiles, prevCenterX, currCenterX, prevCenterY, level === 5 || level === 10);
-      carveVertical(tiles, prevCenterY, currCenterY, currCenterX, level === 5 || level === 10);
+      carveHorizontal(tiles, prevCenterX, currCenterX, prevCenterY, isBossLevel);
+      carveVertical(tiles, prevCenterY, currCenterY, currCenterX, isBossLevel);
     } else {
-      carveVertical(tiles, prevCenterY, currCenterY, prevCenterX, level === 5 || level === 10);
-      carveHorizontal(tiles, prevCenterX, currCenterX, currCenterY, level === 5 || level === 10);
+      carveVertical(tiles, prevCenterY, currCenterY, prevCenterX, isBossLevel);
+      carveHorizontal(tiles, prevCenterX, currCenterX, currCenterY, isBossLevel);
     }
   }
 
@@ -106,8 +120,8 @@ export function generateDungeon(level: number, width: number, height: number): {
     y: Math.floor(firstRoom.y + firstRoom.h / 2)
   };
 
-  // 5. Place Stairs Down in the last room center (except on level 5 and final level 10)
-  if (level < 10 && level !== 5) {
+  // 5. Place Stairs Down in the last room center (except on levels 5, 10, 15, and final level 20)
+  if (level < 20 && level % 5 !== 0) {
     const lastRoom = rooms[rooms.length - 1];
     const stairsX = Math.floor(lastRoom.x + lastRoom.w / 2);
     const stairsY = Math.floor(lastRoom.y + lastRoom.h / 2);
@@ -136,8 +150,23 @@ export function generateDungeon(level: number, width: number, height: number): {
       // Check if already occupied
       const occupied = enemies.some(enemy => enemy.x === rx && enemy.y === ry);
       if (!occupied && (rx !== playerStart.x || ry !== playerStart.y)) {
-        const list = enemyTypesByLevel[Math.min(level, 10)];
+        const list = enemyTypesByLevel[Math.min(level, 20)];
         const template = list[randomRange(0, list.length - 1)];
+
+        // Calculate depth bonus
+        const firstLvl = firstAppearanceLevel[template.name] || level;
+        const depthDiff = Math.max(0, level - firstLvl);
+
+        // Scaling factors per depth level difference: HP +10%, Att +8%, Def +5%, XP +10%
+        const scaleHp = 1 + depthDiff * 0.10;
+        const scaleAtt = 1 + depthDiff * 0.08;
+        const scaleDef = 1 + depthDiff * 0.05;
+        const scaleXp = 1 + depthDiff * 0.10;
+
+        const hp = Math.floor(template.hp * scaleHp);
+        const att = Math.floor(template.att * scaleAtt);
+        const def = Math.floor(template.def * scaleDef);
+        const xpValue = Math.floor(template.xp * scaleXp);
 
         enemies.push({
           id: uuid(),
@@ -145,11 +174,11 @@ export function generateDungeon(level: number, width: number, height: number): {
           y: ry,
           type: template.type,
           name: template.name,
-          hp: template.hp,
-          maxHp: template.hp,
-          att: template.att,
-          def: template.def,
-          xpValue: template.xp,
+          hp: hp,
+          maxHp: hp,
+          att: att,
+          def: def,
+          xpValue: xpValue,
           level: level,
           symbol: template.symbol,
           color: template.color
@@ -193,20 +222,20 @@ export function generateDungeon(level: number, width: number, height: number): {
           description = '攻撃力を永久に 1 上昇させる。';
         } else if (itemTypeChance < 0.70) {
           type = 'weapon_sword';
-          const idx = Math.max(0, Math.min(level - 1, 9));
+          const idx = Math.max(0, Math.min(level - 1, 19));
           name = weaponNames[idx];
           color = weaponColors[idx];
           symbol = '/';
-          value = Math.floor(2 + level * 1.3); // reduced weapon power (was 2 + level * 2.0)
+          value = Math.floor(2 + level * 1.1); // reduced weapon power (was 2 + level * 1.3)
           itemDurability = randomRange(12, 20) + level * 2;
           description = `攻撃力が ${value} 上がる武器。`;
         } else if (itemTypeChance < 0.82) {
           type = 'armor_shield';
-          const idx = Math.max(0, Math.min(level - 1, 9));
+          const idx = Math.max(0, Math.min(level - 1, 19));
           name = armorNames[idx];
           color = armorColors[idx];
           symbol = '[';
-          value = Math.floor(1 + level * 0.9); // reduced armor power (was 1 + level * 1.5)
+          value = Math.floor(1 + level * 0.8); // reduced armor power (was 1 + level * 0.9)
           itemDurability = randomRange(12, 20) + level * 2;
           description = `防御力が ${value} 上がる防具。`;
         } else if (itemTypeChance < 0.90) {
@@ -384,7 +413,7 @@ export function generateDungeon(level: number, width: number, height: number): {
     }
   }
 
-  // 8. LEVEL 10 FINAL BOSS: Demon King Sashima
+  // 8. LEVEL 10 BOSS: Demon King Sashima
   if (level === 10) {
     const lastRoom = rooms[rooms.length - 1];
     const bossX = Math.floor(lastRoom.x + lastRoom.w / 2);
@@ -417,11 +446,97 @@ export function generateDungeon(level: number, width: number, height: number): {
       id: uuid(),
       x: bossX,
       y: Math.max(1, bossY - 1),
+      type: 'ring_attack',
+      name: '心眼の指輪',
+      symbol: 'o',
+      color: '#f43f5e',
+      value: 10,
+      description: '邪教の心眼が秘めていた、敵の急所を見透かす怪しい指輪。'
+    });
+  }
+
+  // 9. LEVEL 15 BOSS: Crystal Golem
+  if (level === 15) {
+    const lastRoom = rooms[rooms.length - 1];
+    const bossX = Math.floor(lastRoom.x + lastRoom.w / 2);
+    const bossY = Math.floor(lastRoom.y + lastRoom.h / 2);
+
+    const cleanIndexE = enemies.findIndex(e => e.x === bossX && e.y === bossY);
+    if (cleanIndexE !== -1) enemies.splice(cleanIndexE, 1);
+    const cleanIndexI = items.findIndex(i => i.x === bossX && i.y === bossY);
+    if (cleanIndexI !== -1) items.splice(cleanIndexI, 1);
+
+    enemies.push({
+      id: uuid(),
+      x: bossX,
+      y: bossY,
+      type: 'crystal_golem',
+      name: '結晶の守護者',
+      hp: 600,
+      maxHp: 600,
+      att: 75,
+      def: 24,
+      xpValue: 3500,
+      level: 15,
+      symbol: 'C',
+      color: '#22d3ee',
+      width: 2,
+      height: 2
+    });
+
+    items.push({
+      id: uuid(),
+      x: bossX,
+      y: Math.max(1, bossY - 1),
+      type: 'weapon_sword',
+      name: '吹雪の魔剣 (Blizzard Sword)',
+      symbol: '/',
+      color: '#06b6d4',
+      value: 28,
+      durability: 60,
+      maxDurability: 60,
+      description: '極寒の氷結晶から鍛え出された魔剣。敵を凍てつかせる力を持つ。'
+    });
+  }
+
+  // 10. LEVEL 20 FINAL BOSS: Abyss Lord
+  if (level === 20) {
+    const lastRoom = rooms[rooms.length - 1];
+    const bossX = Math.floor(lastRoom.x + lastRoom.w / 2);
+    const bossY = Math.floor(lastRoom.y + lastRoom.h / 2);
+
+    const cleanIndexE = enemies.findIndex(e => e.x === bossX && e.y === bossY);
+    if (cleanIndexE !== -1) enemies.splice(cleanIndexE, 1);
+    const cleanIndexI = items.findIndex(i => i.x === bossX && i.y === bossY);
+    if (cleanIndexI !== -1) items.splice(cleanIndexI, 1);
+
+    enemies.push({
+      id: uuid(),
+      x: bossX,
+      y: bossY,
+      type: 'abyss_lord',
+      name: '深淵の覇王',
+      hp: 1200,
+      maxHp: 1200,
+      att: 110,
+      def: 35,
+      xpValue: 10000,
+      level: 20,
+      symbol: 'A',
+      color: '#ec4899',
+      width: 2,
+      height: 2
+    });
+
+    items.push({
+      id: uuid(),
+      x: bossX,
+      y: Math.max(1, bossY - 1),
       type: 'gold', // winning relic
       name: '生成AIの秘宝 (Amulet of Generative AI)',
       symbol: '*',
       color: '#ec4899',
-      value: 9999,
+      value: 99999,
       description: 'このダンジョンの最深部に眠る究極のアーティファクト。手に入れると勝利する。'
     });
   }

@@ -42,7 +42,7 @@ export interface Item {
 
 export type JobType = 'warrior' | 'guardian' | 'ninja';
 
-export type EntityType = 'player' | 'slime' | 'golden_slime' | 'silver_slime' | 'goblin' | 'skeleton' | 'golem' | 'dragon' | 'merchant' | 'hellhound' | 'vampire' | 'demon' | 'archdemon' | 'demon_king';
+export type EntityType = 'player' | 'slime' | 'golden_slime' | 'silver_slime' | 'goblin' | 'hobgoblin' | 'goblin_warrior' | 'goblin_lord' | 'skeleton' | 'skeleton_warrior' | 'death_knight' | 'frost_skeleton' | 'golem' | 'dragon' | 'merchant' | 'hellhound' | 'vampire' | 'demon' | 'archdemon' | 'demon_king' | 'yeti' | 'void_specter' | 'crystal_golem' | 'abyss_lord';
 
 export interface Entity {
   id: string;
