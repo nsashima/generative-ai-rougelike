@@ -336,7 +336,7 @@ function setupEvents() {
       updateSoundButtonUI(isEnabled);
       return;
     }
-    if (e.code === 'KeyR') {
+    if (e.code === 'KeyR' && !e.altKey && !e.ctrlKey && !e.metaKey) {
       handleRestart();
       return;
     }
@@ -506,6 +506,8 @@ function setupEvents() {
         e.preventDefault();
         if (engine.equippedWeapon) {
           openItemDetail(0, 'weapon');
+        } else {
+          engine.addMessage('武器を装備していません。');
         }
         return;
       }
@@ -513,6 +515,8 @@ function setupEvents() {
         e.preventDefault();
         if (engine.equippedArmor) {
           openItemDetail(0, 'armor');
+        } else {
+          engine.addMessage('防具を装備していません。');
         }
         return;
       }
@@ -520,6 +524,8 @@ function setupEvents() {
         e.preventDefault();
         if (engine.equippedRing) {
           openItemDetail(0, 'ring');
+        } else {
+          engine.addMessage('指輪を装備していません。');
         }
         return;
       }
